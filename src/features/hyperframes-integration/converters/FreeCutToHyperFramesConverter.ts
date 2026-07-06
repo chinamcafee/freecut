@@ -225,8 +225,7 @@ export class FreeCutToHyperFramesConverter {
       case 'text':
         return this.convertTextItem(item, baseElement)
       case 'shape':
-        // Shape类型暂时不转换为timeline element
-        return null
+        return this.convertShapeItem(item, baseElement)
       default:
         this.warnings.push(`不支持的item类型: ${item.type}`)
         return null
@@ -279,6 +278,12 @@ export class FreeCutToHyperFramesConverter {
       return null
     }
 
+    // 处理音频EQ设置（当前不支持，记录到warnings）
+    // 音频EQ需要通过Web Audio API实现，超出当前转换器范围
+    if (item.label?.includes('EQ') || item.label?.includes('eq')) {
+      this.warnings.push(`Audio item ${item.id} 可能包含EQ设置，需要通过Web Audio API实现`)
+    }
+
     return {
       ...baseElement,
       type: 'media',
@@ -327,6 +332,58 @@ export class FreeCutToHyperFramesConverter {
       fontSize: item.fontSize || 24,
       fontFamily: item.fontFamily || 'Arial',
       color: item.color || '#FFFFFF',
+    }
+  }
+
+  /**
+   * 转换Shape元素（作为图片处理，使用SVG data URL）
+   */
+  private convertShapeItem(
+    item: ProjectTimeline['items'][0],
+    baseElement: { id: string; start: number; duration: number; trackIndex: number },
+  ): TimelineElement | null {
+    if (!item.shapeType) {
+      this.warnings.push(`Shape item ${item.id} 缺少shapeType`)
+      return null
+    }
+
+    // 生成SVG代码
+    const svg = this.generateShapeSvg(item)
+    if (!svg) {
+      return null
+    }
+
+    // 将Shape作为image类型处理，使用SVG data URL
+    return {
+      ...baseElement,
+      type: 'media',
+      mediaType: 'image',
+      src: `data:image/svg+xml;base64,${btoa(svg)}`,
+    }
+  }
+
+  /**
+   * 生成Shape的SVG代码
+   */
+  private generateShapeSvg(item: ProjectTimeline['items'][0]): string | null {
+    const width = item.transform?.width || 100
+    const height = item.transform?.height || 100
+    const fillColor = item.fillColor || '#FFFFFF'
+    const strokeColor = item.strokeColor || 'none'
+    const strokeWidth = item.strokeWidth || 0
+
+    switch (item.shapeType) {
+      case 'rectangle':
+        return `<rect width="${width}" height="${height}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`
+      case 'circle':
+        return `<circle cx="${width / 2}" cy="${height / 2}" r="${Math.min(width, height) / 2}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`
+      case 'ellipse':
+        return `<ellipse cx="${width / 2}" cy="${height / 2}" rx="${width / 2}" ry="${height / 2}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`
+      case 'triangle':
+        return `<polygon points="${width / 2},0 ${width},${height} 0,${height}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`
+      default:
+        this.unsupportedFeatures.push(`Shape类型 ${item.shapeType} 暂未完全支持`)
+        return null
     }
   }
 
@@ -413,6 +470,43 @@ export class FreeCutToHyperFramesConverter {
     }
 
     return filters.join(' ')
+  }
+
+  /**
+   * 转换混合模式
+   * 注意：当前HyperFrames的TimelineElement类型不直接支持blendMode字段
+   * 此方法保留供未来CSS mix-blend-mode支持使用
+   * @internal
+   */
+  // @ts-expect-error - 保留供未来使用
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private convertBlendMode(blendMode?: string): string {
+    if (!blendMode) {
+      return 'normal'
+    }
+
+    const blendModeMap: Record<string, string> = {
+      normal: 'normal',
+      multiply: 'multiply',
+      screen: 'screen',
+      overlay: 'overlay',
+      darken: 'darken',
+      lighten: 'lighten',
+      'color-dodge': 'color-dodge',
+      'color-burn': 'color-burn',
+      'hard-light': 'hard-light',
+      'soft-light': 'soft-light',
+      difference: 'difference',
+      exclusion: 'exclusion',
+    }
+
+    const cssBlendMode = blendModeMap[blendMode]
+    if (!cssBlendMode) {
+      this.warnings.push(`不支持的混合模式: ${blendMode}`)
+      return 'normal'
+    }
+
+    return cssBlendMode
   }
 
   // ============================================================================
