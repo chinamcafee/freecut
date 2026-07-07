@@ -34,7 +34,12 @@ export class HyperFramesToFreeCutConverter {
       throw new Error(`Missing active composition file: ${manifest.activeCompositionPath}`)
     }
 
-    const parsed = this.parseCompositionHtml(compositionHtml, manifest, unsupportedFeatures)
+    const parsed = this.parseCompositionHtml(
+      compositionHtml,
+      manifest,
+      warnings,
+      unsupportedFeatures,
+    )
     const compositionItemId = `hf-${manifest.id}`
     const compositionLink: HyperFramesCompositionLink = {
       timelineItemId: compositionItemId,
@@ -108,6 +113,7 @@ export class HyperFramesToFreeCutConverter {
   private parseCompositionHtml(
     html: string,
     manifest: HyperFramesProjectManifest,
+    warnings: string[],
     unsupportedFeatures: Set<string>,
   ): {
     tracks: ProjectTimeline['tracks']
@@ -131,7 +137,7 @@ export class HyperFramesToFreeCutConverter {
     }
 
     const compositionTrack = ensureTrack(tracksByIndex, tracksByIndex.size)
-    const keyframes = this.parseKeyframes(document)
+    const keyframes = this.parseKeyframes(document, warnings, unsupportedFeatures)
 
     return {
       tracks: Array.from(tracksByIndex.values()).sort((left, right) => left.order - right.order),
@@ -205,7 +211,11 @@ export class HyperFramesToFreeCutConverter {
     }
   }
 
-  private parseKeyframes(document: Document): NonNullable<ProjectTimeline['keyframes']> {
+  private parseKeyframes(
+    document: Document,
+    warnings: string[],
+    unsupportedFeatures: Set<string>,
+  ): NonNullable<ProjectTimeline['keyframes']> {
     const script = document.querySelector<HTMLScriptElement>('#hf-keyframes')
     if (!script?.textContent) {
       return []
@@ -217,6 +227,9 @@ export class HyperFramesToFreeCutConverter {
         property: string
         keyframes: Array<{ frame: number; value: number; easing: string }>
       }>
+      if (!Array.isArray(entries)) {
+        throw new Error('Expected HyperFrames keyframes payload to be an array')
+      }
       return entries.map((entry) => ({
         itemId: entry.itemId,
         properties: [
@@ -232,6 +245,10 @@ export class HyperFramesToFreeCutConverter {
         ],
       }))
     } catch {
+      unsupportedFeatures.add('keyframes-parse-error')
+      warnings.push(
+        'Unable to parse controlled HyperFrames keyframes; source project directory remains canonical',
+      )
       return []
     }
   }

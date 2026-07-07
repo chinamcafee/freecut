@@ -1,172 +1,148 @@
-# FreeCut to HyperFrames 转换器 API 文档
+# HyperFrames Converter API
 
-> **文档版本**: v1.0  
-> **创建日期**: 2026-07-06  
-> **对应代码**: Week 03 Deliverables
+> **Version**: v2.0
+> **Last updated**: 2026-07-07
+> **Code scope**: Phase 1 / Weeks 03-05
 
----
+## Overview
 
-## 概述
+The Phase 1 converter API moves FreeCut data into a manifest-backed HyperFrames
+project directory and imports that directory back into a FreeCut project.
 
-`FreeCutToHyperFramesConverter` 是将 FreeCut timeline 数据转换为 HyperFrames composition 格式的核心转换器。
+The project directory is the canonical HyperFrames artifact. The legacy
+`composition` value returned by the exporter is kept only as a compatibility
+preview bridge for older call sites.
 
-## 核心类
+## Export API
+
+```ts
+import { FreeCutToHyperFramesConverter } from '@/features/hyperframes-integration/converters'
+
+const result = new FreeCutToHyperFramesConverter({
+  includeAudio: true,
+  includeAnimations: true,
+  assetPathStrategy: 'relative',
+}).convert(project)
+```
 
 ### FreeCutToHyperFramesConverter
 
-主转换器类，负责将 FreeCut 项目转换为 HyperFrames 格式。
-
-#### 构造函数
-
-```typescript
-constructor()
+```ts
+class FreeCutToHyperFramesConverter {
+  constructor(options?: FreeCutConverterOptions)
+  convert(project: Project): ConversionResult
+}
 ```
-
-创建转换器实例，无需参数。
-
-#### 主要方法
-
-##### convert()
-
-```typescript
-convert(
-  project: Project,
-  options?: FreeCutConverterOptions
-): ConversionResult
-```
-
-**参数**：
-- `project`: FreeCut 项目对象
-- `options`: 可选的转换配置
-
-**返回**：
-- `ConversionResult`: 包含转换后的 composition、警告和不支持特性列表
-
-**示例**：
-```typescript
-const converter = new FreeCutToHyperFramesConverter()
-const result = converter.convert(project, {
-  includeAudio: true,
-  includeAnimations: true,
-  assetPathStrategy: 'relative'
-})
-```
-
----
-
-## 配置选项
 
 ### FreeCutConverterOptions
 
-```typescript
+```ts
 interface FreeCutConverterOptions {
-  includeAudio?: boolean           // 是否包含音频（默认：true）
-  includeAnimations?: boolean      // 是否生成GSAP动画（默认：true）
-  assetPathStrategy?: 'relative' | 'absolute' | 'cdn'  // 资源路径策略（默认：'relative'）
-  formatHtml?: boolean            // HTML是否格式化（默认：true）
-  includeSourceMap?: boolean      // 是否包含source map（默认：false）
+  includeAudio?: boolean
+  includeAnimations?: boolean
+  assetPathStrategy?: 'relative' | 'absolute' | 'cdn'
+  formatHtml?: boolean
+  includeSourceMap?: boolean
 }
 ```
-
----
-
-## 转换结果
 
 ### ConversionResult
 
-```typescript
+```ts
 interface ConversionResult {
-  composition: HyperFramesComposition  // 转换后的composition
-  warnings: string[]                   // 转换警告
-  unsupportedFeatures: string[]        // 不支持的特性
+  composition: HyperFramesComposition
+  projectDirectory: HyperFramesProjectDirectory
+  warnings: string[]
+  unsupportedFeatures: string[]
 }
 ```
 
----
+`projectDirectory` contains:
 
-## 元素转换方法
+- `manifest`: `HyperFramesProjectManifest`
+- `files['manifest.json']`
+- `files['index.html']`
+- `files['compositions/main.html']`
+- `fileIndex`: hash-indexed generated files
+- `assets`: asset references with project paths and hashes
 
-转换器支持以下元素类型的转换：
+## Import API
 
-- **Video**: `convertVideoItem()` - 视频元素
-- **Audio**: `convertAudioItem()` - 音频元素
-- **Image**: `convertImageItem()` - 图像元素
-- **Text**: `convertTextItem()` - 文本元素
+```ts
+import { HyperFramesToFreeCutConverter } from '@/features/hyperframes-integration/converters'
 
----
-
-## Transform 转换
-
-`convertTransform()` 方法处理：
-- 位置（position）
-- 缩放（scale）
-- 旋转（rotation）
-- 锚点（anchor）
-
-生成对应的 CSS transform 字符串。
-
----
-
-## 关键帧动画
-
-`generateGsapAnimation()` 方法：
-- 提取关键帧数据
-- 转换为 GSAP timeline 代码
-- 处理缓动函数（easing）
-
----
-
-## 资源映射
-
-`AssetMapper` 类处理资源路径映射：
-- **relative**: 相对路径
-- **absolute**: 绝对路径
-- **cdn**: CDN 路径
-
----
-
-## 使用示例
-
-### 基础转换
-
-```typescript
-import { FreeCutToHyperFramesConverter } from '@/features/hyperframes-integration/converters'
-
-const converter = new FreeCutToHyperFramesConverter()
-const result = converter.convert(project)
-
-console.log(result.composition)
-console.log(result.warnings)
+const imported = new HyperFramesToFreeCutConverter().convert(projectDirectory)
 ```
 
-### 自定义选项
+### HyperFramesToFreeCutConverter
 
-```typescript
-const result = converter.convert(project, {
-  includeAudio: false,
-  assetPathStrategy: 'cdn',
-  formatHtml: true
-})
+```ts
+class HyperFramesToFreeCutConverter {
+  convert(projectDirectory: HyperFramesProjectDirectory): HyperFramesImportResult
+}
 ```
 
----
+### HyperFramesImportResult
 
-## 错误处理
+```ts
+interface HyperFramesImportResult {
+  project: Project
+  warnings: string[]
+  unsupportedFeatures: string[]
+}
+```
 
-转换器不会抛出异常，而是：
-1. 返回 `warnings` 数组记录警告
-2. 返回 `unsupportedFeatures` 数组记录不支持的特性
-3. 尽可能完成转换，跳过无法处理的部分
+The importer creates editable FreeCut approximations for supported
+`[data-hf-item]` nodes and always adds one source-linked `composition` item. The
+source-linked item points to `project.hyperframes.projects` and
+`project.hyperframes.compositionLinks`, so the HyperFrames project directory
+remains canonical even when only part of the HTML can be mapped back.
 
----
+## Storage API
 
-## 性能考虑
+Phase 1 stores HyperFrames directories through `HyperFramesProjectStorage` in
+`src/features/hyperframes-integration/storage/composition-storage.ts`.
 
-- 小型项目（<10个元素）：< 100ms
-- 中型项目（10-50个元素）：< 500ms
-- 大型项目（>50个元素）：< 2s
+Available adapters:
 
----
+- `InMemoryHyperFramesFileSystemAdapter` for tests
+- `OpfsHyperFramesFileSystemAdapter` for browser OPFS persistence
+- `DirectoryHandleHyperFramesFileSystemAdapter` for directory handles
 
-**文档状态**: ✅ 完成  
-**最后更新**: 2026-07-06
+The exported `compositionStorage` name is retained as a compatibility alias for
+the new project-directory storage.
+
+## Errors And Warnings
+
+The exporter throws when the FreeCut project has no timeline. It records
+lossy-but-recoverable cases, such as audio EQ, in `warnings` and
+`unsupportedFeatures`.
+
+The importer throws when the active composition file declared by the manifest is
+missing. It records unsupported or unsafe reverse mappings while preserving the
+source-linked composition.
+
+Current warning examples:
+
+- `audio-eq`
+- `shape-reverse-mapping`
+- `keyframes-parse-error`
+- `unknown-node:<type>`
+
+## Validation
+
+Relevant tests:
+
+- `src/shared/projects/migrations/index.test.ts`
+- `src/features/hyperframes-integration/storage/composition-storage.test.ts`
+- `src/features/hyperframes-integration/converters/__tests__/project-directory-export.test.ts`
+- `src/features/hyperframes-integration/converters/__tests__/project-directory-import.test.ts`
+- `src/features/hyperframes-integration/converters/__tests__/phase-1-validation.test.ts`
+
+Run:
+
+```bash
+npm run test:run -- src/shared/projects/migrations/index.test.ts src/features/hyperframes-integration/storage/composition-storage.test.ts src/features/hyperframes-integration/converters/__tests__/project-directory-export.test.ts src/features/hyperframes-integration/converters/__tests__/project-directory-import.test.ts src/features/hyperframes-integration/converters/__tests__/phase-1-validation.test.ts
+npm run check
+npm run build
+```

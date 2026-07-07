@@ -1,248 +1,98 @@
-# FreeCut to HyperFrames 转换器限制和已知问题
+# HyperFrames Converter Limitations
 
-> **文档版本**: v1.0  
-> **创建日期**: 2026-07-06  
-> **对应代码**: Week 03 Deliverables
+> **Version**: v2.0
+> **Last updated**: 2026-07-07
+> **Code scope**: Phase 1 / Weeks 03-05
 
----
+## Summary
 
-## 概述
+Phase 1 proves the data model, storage, export, import, and validation path for
+manifest-backed HyperFrames project directories. It does not claim lossless
+interoperability between arbitrary HyperFrames HTML and editable FreeCut
+timeline data.
 
-本文档记录 FreeCut → HyperFrames 转换器的当前限制和已知问题。
+The source-linked `composition` item and `compositionLinks` map are the safety
+mechanism: unsupported reverse mappings keep the HyperFrames project directory
+canonical.
 
----
+## Current Limitations
 
-## 功能限制
+### Arbitrary Scripts
 
-### 1. WebGPU 特效
+Only the controlled `#hf-keyframes` JSON script is parsed. Other scripts remain
+part of the HyperFrames source directory and are not converted into FreeCut
+timeline behavior.
 
-**限制**：FreeCut 的 WebGPU 自定义特效无法完全映射到 CSS。
+If the controlled keyframe payload is malformed, the importer records:
 
-**影响**：
-- 自定义 shader 特效会被忽略
-- 复杂的粒子效果无法转换
-- 高级模糊效果可能降级
+- `unsupportedFeatures`: `keyframes-parse-error`
+- warning: `Unable to parse controlled HyperFrames keyframes; source project directory remains canonical`
 
-**缓解方案**：
-- 记录不支持的特效到 `unsupportedFeatures`
-- 后续通过 WebGL/Canvas 实现自定义渲染
+### CSS And Layout Semantics
 
-**优先级**：中等
+The importer supports a narrow CSS subset:
 
----
+- `translate(x, y)`
+- `opacity`
+- text font size, family, and color
 
-### 2. 关键帧精度
+Complex transforms, CSS animations, filters, masks, layout-dependent sizing, and
+custom CSS rules remain canonical in the HyperFrames directory.
 
-**限制**：贝塞尔曲线转换可能有精度损失。
+### Shape Mapping
 
-**影响**：
-- 复杂的缓动曲线可能不完全一致
-- 动画流畅度可能略有差异
+Shape import uses a rectangle fallback and records `shape-reverse-mapping`.
+Exact SVG paths, rounded corners, gradients, and shape-specific controls are not
+reconstructed in Phase 1.
 
-**缓解方案**：
-- 增加关键帧采样点
-- 使用 GSAP 的高精度模式
+### Audio Processing
 
-**优先级**：低
+Basic media references and volume are exported. Advanced FreeCut audio EQ is
+recorded as `audio-eq` because HyperFrames Phase 1 has no equivalent editable
+audio processing model.
 
----
+### Parser Depth
 
-### 3. 音频处理
+The importer currently uses browser `DOMParser` and controlled `data-*`
+attributes. Full `@hyperframes/core` parser/linter integration is deferred until
+Phase 2 when Studio and Producer integration are wired in.
 
-**限制**：高级音频处理（EQ、压缩器）不支持。
+### Asset Availability
 
-**影响**：
-- 音频 EQ 设置会被忽略
-- 音频效果器无法转换
-- 仅支持基础的 volume 和淡入淡出
+The manifest records asset refs and hashes, but Phase 1 does not copy binary
+files or verify codec compatibility. Browser playback compatibility remains the
+responsibility of the later Studio/Producer integration layer.
 
-**缓解方案**：
-- 使用 Web Audio API（计划中）
-- 预处理音频文件
+## Performance Budgets
 
-**优先级**：中等
+Week 05 establishes repeatable converter budgets in
+`phase-1-validation.test.ts`:
 
----
+| Scenario | Budget |
+| --- | --- |
+| Simple project round-trip | `< 1s` |
+| 180-item complex project round-trip | `< 5s` |
 
-### 4. 混合模式
+These budgets cover conversion only. They do not include media decoding, binary
+asset copy, preview rendering, or export rendering.
 
-**限制**：部分混合模式不支持或效果不同。
+## Data Integrity Model
 
-**影响**：
-- 高级混合模式可能降级为 normal
-- 某些混合效果在浏览器间不一致
+Phase 1 import creates two representations:
 
-**支持的混合模式**：
-- ✅ normal
-- ✅ multiply
-- ✅ screen
-- ✅ overlay
-- ⚠️ color-dodge（部分支持）
-- ❌ linear-dodge（不支持）
+1. Editable approximations for supported items
+2. A source-linked HyperFrames composition that points back to the canonical
+   manifest and active composition path
 
-**缓解方案**：
-- 记录到 warnings
-- 使用最接近的替代模式
+When the two disagree, the HyperFrames project directory is authoritative for
+HyperFrames rendering.
 
-**优先级**：低
+## Phase 2 Follow-Up
 
----
-
-## 性能问题
-
-### 1. 大型项目转换
-
-**问题**：包含大量元素的项目转换耗时较长。
-
-**影响范围**：
-- 50+ 元素：2-5秒
-- 100+ 元素：5-10秒
-- 200+ 元素：>10秒
-
-**优化方案**：
-- 实现增量转换
-- 添加转换缓存
-- 使用 Web Worker
-
-**状态**：计划中
-
----
-
-### 2. 内存使用
-
-**问题**：大量关键帧数据会占用较多内存。
-
-**影响**：
-- 长时间动画可能导致内存压力
-- 浏览器可能出现卡顿
-
-**优化方案**：
-- 关键帧数据压缩
-- 按需加载动画数据
-
-**状态**：待实现
-
----
-
-## 已知问题
-
-### Issue #1: Shape 元素转换未实现
-
-**描述**：Shape 元素（矩形、圆形、多边形）转换暂未实现。
-
-**影响**：Shape 元素会被跳过，记录到 warnings。
-
-**解决方案**：计划在 Week 04 实现 SVG 生成逻辑。
-
-**优先级**：高
-
----
-
-### Issue #2: 3D Transform 不支持
-
-**描述**：FreeCut 的 3D 变换（rotateX, rotateY, perspective）不支持。
-
-**影响**：3D 效果会降级为 2D。
-
-**解决方案**：后续添加 CSS 3D transform 支持。
-
-**优先级**：中等
-
----
-
-### Issue #3: 视频编解码器兼容性
-
-**描述**：某些视频编解码器在浏览器中不支持。
-
-**影响**：
-- H.265/HEVC 在部分浏览器不支持
-- VP9 在旧浏览器不支持
-
-**解决方案**：
-- 添加编解码器检测
-- 提供转码建议
-
-**优先级**：高
-
----
-
-## 兼容性
-
-### 浏览器支持
-
-| 浏览器 | 版本要求 | 支持度 |
-|-------|---------|-------|
-| Chrome | >= 90 | ✅ 完全支持 |
-| Firefox | >= 88 | ✅ 完全支持 |
-| Safari | >= 14 | ⚠️ 部分支持 |
-| Edge | >= 90 | ✅ 完全支持 |
-
-**Safari 限制**：
-- 某些 CSS filter 效果不同
-- GSAP 动画性能略低
-
----
-
-## 数据完整性
-
-### 1. 元数据丢失
-
-**问题**：某些 FreeCut 特有的元数据会丢失。
-
-**影响**：
-- 编辑历史不保留
-- 自定义标签丢失
-
-**缓解方案**：在 HTML 注释中保留元数据。
-
----
-
-### 2. 可逆性
-
-**问题**：转换不完全可逆。
-
-**影响**：HyperFrames → FreeCut 反向转换可能不完全一致。
-
-**说明**：这是设计限制，两个系统的能力不完全对等。
-
----
-
-## 测试覆盖
-
-### 当前覆盖率
-
-- ✅ 基础元素转换：90%
-- ✅ Transform 转换：85%
-- ⚠️ 特效转换：60%
-- ⚠️ 关键帧动画：70%
-- ❌ Shape 元素：0%（未实现）
-
----
-
-## 改进路线图
-
-### Week 04 计划
-
-1. 实现 Shape 元素转换
-2. 添加视频编解码器检测
-3. 优化大型项目转换性能
-
-### Week 05 计划
-
-1. 实现 3D transform 支持
-2. 添加 Web Audio API 集成
-3. 完善测试覆盖率到 90%+
-
----
-
-## 报告问题
-
-如发现新的限制或问题，请：
-1. 记录问题现象和重现步骤
-2. 标注影响范围和严重程度
-3. 提供可能的解决方案
-
----
-
-**文档状态**: ✅ 完成  
-**最后更新**: 2026-07-06
+- Replace DOM-only parsing with HyperFrames parser/linter where available
+- Add Studio UI entry points for HyperFrames-backed composition items
+- Add Producer render path and alpha overlay integration
+- Add binary asset copy/validation and cache invalidation
+- Expand reverse mapping for CSS transforms, SVG, filters, and nested
+  compositions
+- Convert warnings into user-visible diagnostics

@@ -1,235 +1,156 @@
-# FreeCut to HyperFrames 转换规则说明
+# HyperFrames Converter Rules
 
-> **文档版本**: v1.0  
-> **创建日期**: 2026-07-06  
-> **对应代码**: Week 03 Deliverables
+> **Version**: v2.0
+> **Last updated**: 2026-07-07
+> **Code scope**: Phase 1 / Weeks 03-05
 
----
+## Canonical Artifact
 
-## 概述
+Phase 1 treats a HyperFrames project directory as the canonical exchange format.
 
-本文档详细说明 FreeCut timeline 到 HyperFrames composition 的转换规则。
+Generated directory shape:
 
----
-
-## 元素类型映射
-
-### Video 元素
-
-**FreeCut → HyperFrames**
-
-| FreeCut 属性 | HyperFrames 属性 | 转换规则 |
-|-------------|-----------------|---------|
-| `resourceId` | `src` | 通过 AssetMapper 映射资源路径 |
-| `start` | `from` | 帧转时间：`start / fps` |
-| `duration` | `duration` | 帧转时间：`duration / fps` |
-| `volume` | `volume` | 直接映射（0-1） |
-| `from` | 视频起始点 | 通过 `clipStart` 属性 |
-
-### Audio 元素
-
-| FreeCut 属性 | HyperFrames 属性 | 转换规则 |
-|-------------|-----------------|---------|
-| `resourceId` | `src` | 资源路径映射 |
-| `volume` | `volume` | 直接映射 |
-| `fadeIn` | CSS transition | 淡入效果 |
-| `fadeOut` | CSS transition | 淡出效果 |
-
-### Image 元素
-
-| FreeCut 属性 | HyperFrames 属性 | 转换规则 |
-|-------------|-----------------|---------|
-| `resourceId` | `src` | 资源路径映射 |
-| `transform` | CSS transform | 见 Transform 转换规则 |
-
-### Text 元素
-
-| FreeCut 属性 | HyperFrames 属性 | 转换规则 |
-|-------------|-----------------|---------|
-| `text` | `textContent` | 直接映射 |
-| `fontFamily` | `font-family` | CSS 样式 |
-| `fontSize` | `font-size` | 转换为 px 单位 |
-| `color` | `color` | RGBA 转换 |
-| `textAlign` | `text-align` | 直接映射 |
-
----
-
-## Transform 转换规则
-
-### 坐标系转换
-
-FreeCut 使用画布坐标系，HyperFrames 使用 HTML 坐标系：
-
-```
-FreeCut (0,0) 在左上角
-HyperFrames (0,0) 在元素左上角
+```text
+hyperframes/<project-id>/
+  manifest.json
+  index.html
+  compositions/main.html
+  assets/<media files referenced by manifest>
 ```
 
-### Position
+`manifest.json` records the entry file, active composition path, timing,
+dimensions, asset references, provenance hashes, warnings, and unsupported
+features.
 
-```typescript
-// FreeCut
-position: { x: 100, y: 200 }
+`index.html` is only the entry wrapper. `compositions/main.html` carries the
+timeline-derived HTML and controlled keyframe payload.
 
-// HyperFrames CSS
-transform: translate(100px, 200px)
-```
+## FreeCut To HyperFrames
 
-### Scale
+### Project Metadata
 
-```typescript
-// FreeCut
-scale: { x: 1.5, y: 1.2 }
+| FreeCut field | HyperFrames field | Rule |
+| --- | --- | --- |
+| `project.id` | `manifest.id` | Prefixed as `freecut-<id>` |
+| `project.name` | `manifest.name` | Direct mapping |
+| `metadata.width` | `manifest.width` | Direct mapping |
+| `metadata.height` | `manifest.height` | Direct mapping |
+| `metadata.fps` | `manifest.fps` | Stored as `{ num, den }` |
+| `duration` | `manifest.durationInFrames` | Stored in frames |
+| `metadata.backgroundColor` | `manifest.backgroundColor` | Direct mapping |
 
-// HyperFrames CSS
-transform: scale(1.5, 1.2)
-```
+### Timeline Items
 
-### Rotation
+Each supported FreeCut item becomes a DOM node with `data-hf-item`.
 
-```typescript
-// FreeCut
-rotation: 45  // 度数
+| FreeCut item | HyperFrames node | Required attributes |
+| --- | --- | --- |
+| `text` | `<div>` | `data-hf-type="text"` |
+| `video` | `<video>` | `data-hf-type="video"`, `src` |
+| `audio` | `<audio>` | `data-hf-type="audio"`, `src` |
+| `image` | `<img>` | `data-hf-type="image"`, `src` |
+| `shape` | `<div>` | `data-hf-type="shape"` |
+| `composition` | `<div>` | `data-hf-type="composition"`, `data-composition-src` |
 
-// HyperFrames CSS
-transform: rotate(45deg)
-```
+Common attributes:
 
-### 组合 Transform
+- `id`
+- `data-start`: `item.from / fps`
+- `data-duration`: `item.durationInFrames / fps`
+- `data-track-index`: timeline track order index
 
-```typescript
-// FreeCut
-{
-  position: { x: 100, y: 200 },
-  scale: { x: 1.5, y: 1.5 },
-  rotation: 45
-}
+### Styling
 
-// HyperFrames CSS
-transform: translate(100px, 200px) scale(1.5, 1.5) rotate(45deg)
-```
+The exporter writes directly supported transform fields as inline CSS:
 
----
+- `transform.x` and `transform.y` → `translate(<x>px, <y>px)`
+- `transform.opacity` → `opacity`
+- text `fontSize`, `fontFamily`, and `color` → CSS text styles
 
-## 关键帧动画转换
+Unsupported styling stays in the canonical source and must be recorded as a
+warning if it is known to be lossy.
 
-### 关键帧数据结构
+### Keyframes
 
-**FreeCut 关键帧**：
-```typescript
-{
-  frame: 0,
-  value: { x: 0, y: 0 },
-  easing: 'ease-in-out'
-}
-```
-
-**转换为 GSAP**：
-```javascript
-gsap.timeline()
-  .to(element, {
-    x: 0,
-    y: 0,
-    duration: frameDuration,
-    ease: 'power2.inOut'
-  })
-```
-
-### Easing 映射
-
-| FreeCut Easing | GSAP Easing |
-|---------------|-------------|
-| `linear` | `none` |
-| `ease-in` | `power2.in` |
-| `ease-out` | `power2.out` |
-| `ease-in-out` | `power2.inOut` |
-| `cubic-bezier(...)` | 自定义贝塞尔 |
-
----
-
-## 资源路径映射
-
-### Relative 策略
-
-```
-FreeCut: /Users/.../video.mp4
-HyperFrames: ./assets/video.mp4
-```
-
-### Absolute 策略
-
-```
-FreeCut: video-id-123
-HyperFrames: file:///Users/.../video.mp4
-```
-
-### CDN 策略
-
-```
-FreeCut: video-id-123
-HyperFrames: https://cdn.example.com/video-id-123.mp4
-```
-
----
-
-## 时间轴转换
-
-### FPS 处理
-
-```typescript
-// FreeCut 使用帧数
-frame: 90, fps: 30
-// 转换为秒
-time: 90 / 30 = 3.0s
-```
-
-### Duration 计算
-
-```typescript
-// FreeCut
-start: 30, duration: 60, fps: 30
-// HyperFrames
-from: 1.0s, duration: 2.0s
-```
-
----
-
-## 特效映射
-
-### 支持的特效
-
-| FreeCut 特效 | CSS Filter |
-|-------------|-----------|
-| `blur` | `blur(5px)` |
-| `brightness` | `brightness(1.2)` |
-| `contrast` | `contrast(1.5)` |
-| `saturate` | `saturate(2.0)` |
-| `grayscale` | `grayscale(1.0)` |
-
----
-
-## HTML 生成规则
-
-### 文档结构
+FreeCut keyframes are serialized into a controlled script tag:
 
 ```html
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>HyperFrames Composition</title>
-  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
-</head>
-<body>
-  <!-- Timeline Elements -->
-  <script>
-    // GSAP Animations
-  </script>
-</body>
-</html>
+<script id="hf-keyframes" type="application/json">[...]</script>
 ```
 
----
+Only this JSON payload is considered reversible in Phase 1. Arbitrary scripts
+are not parsed back into FreeCut keyframes.
 
-**文档状态**: ✅ 完成  
-**最后更新**: 2026-07-06
+### Assets
+
+Asset references are listed in the manifest and directory asset index.
+
+Default mapping:
+
+```text
+/media/launch.mp4 -> assets/launch.mp4
+```
+
+Every asset ref includes a stable hash so storage and future cache layers can
+detect changed files.
+
+## HyperFrames To FreeCut
+
+### Import Strategy
+
+The importer reads the manifest active composition path and parses supported
+`[data-hf-item]` nodes into editable FreeCut approximations.
+
+It also creates a source-linked composition item:
+
+```ts
+{
+  type: 'composition',
+  sourceKind: 'hyperframes',
+  hyperframesProjectId: manifest.id,
+  activeCompositionPath: manifest.activeCompositionPath,
+  hyperframesManifestPath: `${manifest.projectDir}/manifest.json`
+}
+```
+
+The project stores the source link in:
+
+- `project.hyperframes.projects[manifest.id]`
+- `project.hyperframes.compositionLinks[timelineItemId]`
+
+This preserves the HyperFrames source even when reverse mapping is incomplete.
+
+### Reverse Mapping
+
+| HyperFrames node | FreeCut item | Notes |
+| --- | --- | --- |
+| `data-hf-type="text"` | `text` | Restores text, font size, family, color, transform |
+| `data-hf-type="video"` | `video` | Restores `src`, timing, transform |
+| `data-hf-type="audio"` | `audio` | Restores `src`, timing, transform |
+| `data-hf-type="image"` | `image` | Restores `src`, timing, transform |
+| `data-hf-type="shape"` | `shape` | Coarse rectangle fallback; records `shape-reverse-mapping` |
+| `data-hf-type="composition"` | `composition` | Restores nested source path if present |
+
+Unknown node types are skipped and recorded as `unknown-node:<type>`.
+
+### Track Reconstruction
+
+`data-track-index` groups imported items into FreeCut tracks. The importer adds
+one extra track for the source-linked HyperFrames composition item.
+
+### Time Conversion
+
+Import uses `manifest.fps.num / manifest.fps.den`.
+
+```text
+data-start seconds * fps -> item.from frames
+data-duration seconds * fps -> item.durationInFrames frames
+```
+
+## Non-Goals For Phase 1
+
+- Parsing arbitrary JavaScript into FreeCut keyframes
+- Full semantic reconstruction of CSS, SVG, or canvas effects
+- WebGPU/Producer render integration
+- Studio UI integration
+- Lossless round-trip for every FreeCut feature
