@@ -9,3 +9,7 @@ export {
   type FreeCutConverterOptions,
   type ConversionResult,
 } from './FreeCutToHyperFramesConverter'
+export {
+  HyperFramesToFreeCutConverter,
+  type HyperFramesImportResult,
+} from './HyperFramesToFreeCutConverter'
