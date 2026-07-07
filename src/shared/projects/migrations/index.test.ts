@@ -39,6 +39,103 @@ function createBaseProject(timeline: ProjectTimeline): Project {
 }
 
 describe('migrateProject transition normalization', () => {
+  it('adds the HyperFrames manifest map and composition link index to legacy projects', () => {
+    const project = createBaseProject({
+      tracks: [createTrack('video-track', 0, 'video')],
+      items: [
+        {
+          id: 'comp-item',
+          type: 'composition',
+          trackId: 'video-track',
+          from: 0,
+          durationInFrames: 90,
+          label: 'Animated Title',
+          compositionId: 'freecut-comp',
+        },
+      ],
+      compositions: [
+        {
+          id: 'freecut-comp',
+          name: 'Animated Title',
+          items: [],
+          tracks: [],
+          fps: 30,
+          width: 1920,
+          height: 1080,
+          durationInFrames: 90,
+        },
+      ],
+    })
+
+    const result = migrateProject(project)
+
+    expect(result.project.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+    expect(result.project.hyperframes).toEqual({
+      schemaVersion: 1,
+      projects: {},
+      compositionLinks: {},
+      skills: {
+        enabled: [],
+        history: [],
+      },
+      renderConfig: {
+        engine: 'freecut',
+        quality: 'production',
+      },
+    })
+    expect(result.project.timeline?.items[0]?.type).toBe('composition')
+    expect(result.project.timeline?.items[0]).not.toHaveProperty('type', 'hyperframes-composition')
+  })
+
+  it('migrates legacy embedded HyperFrames compositions into project manifests', () => {
+    const legacyProject = {
+      ...createBaseProject({
+        tracks: [createTrack('video-track', 0, 'video')],
+        items: [
+          {
+            id: 'hf-item',
+            type: 'composition',
+            trackId: 'video-track',
+            from: 30,
+            durationInFrames: 60,
+            label: 'Legacy HF',
+            compositionId: 'legacy-hf',
+          },
+        ],
+      }),
+      hyperframes: {
+        compositions: {
+          'legacy-hf': {
+            id: 'legacy-hf',
+            name: 'Legacy HF',
+            width: 1080,
+            height: 1080,
+            duration: 2,
+            fps: { num: 30, den: 1 },
+            html: '<div data-composition-id="legacy-hf"></div>',
+            assets: [],
+          },
+        },
+      },
+    } as unknown as Project
+
+    const result = migrateProject(legacyProject)
+
+    expect(result.project.hyperframes?.projects['legacy-hf']).toMatchObject({
+      id: 'legacy-hf',
+      name: 'Legacy HF',
+      entryFile: 'index.html',
+      activeCompositionPath: 'compositions/legacy-hf.html',
+      source: 'legacy-composition',
+    })
+    expect(result.project.hyperframes?.compositionLinks['hf-item']).toMatchObject({
+      timelineItemId: 'hf-item',
+      projectId: 'legacy-hf',
+      sourceKind: 'hyperframes',
+      activeCompositionPath: 'compositions/legacy-hf.html',
+    })
+  })
+
   it('converts legacy overlap transitions back to adjacent cuts and restores linked audio alignment', () => {
     const project = createBaseProject({
       tracks: [createTrack('video-track', 0, 'video'), createTrack('audio-track', 1, 'audio')],

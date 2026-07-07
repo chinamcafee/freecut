@@ -24,7 +24,9 @@ function migrateV1ToV2(project: Project): Project {
   return {
     ...project,
     hyperframes: {
-      compositions: {},
+      schemaVersion: 1,
+      projects: {},
+      compositionLinks: {},
       skills: {
         enabled: [],
         history: [],

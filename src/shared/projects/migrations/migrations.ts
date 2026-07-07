@@ -20,6 +20,15 @@ const TRACK_HEIGHT_V4_TARGET = 80
 type ProjectItem = ProjectTimeline['items'][number]
 type ProjectTransition = NonNullable<ProjectTimeline['transitions']>[number]
 
+function stableHash(input: string): string {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return `fnv1a-${(hash >>> 0).toString(16).padStart(8, '0')}`
+}
+
 function isLegacyLinkedPair(anchor: ProjectItem, candidate: ProjectItem): boolean {
   if (candidate.id === anchor.id) return false
   const isMediaPair =
@@ -919,6 +928,117 @@ const migrations: Record<number, Migration> = {
             })) ?? timeline.compositions,
         },
       } as Project
+    },
+  },
+  /**
+   * Version 13: Add manifest-backed HyperFrames integration state.
+   *
+   * Earlier integration prototypes stored HyperFrames data as embedded
+   * compositions. The production model keeps HyperFrames project directories
+   * canonical and stores only manifests plus FreeCut composition links here.
+   */
+  13: {
+    version: 13,
+    description: 'Add manifest-backed HyperFrames integration state',
+    migrate: (project: Project): Project => {
+      const legacyHyperframes = project.hyperframes as
+        | {
+            schemaVersion?: number
+            projects?: Record<string, unknown>
+            compositionLinks?: Record<string, unknown>
+            compositions?: Record<
+              string,
+              {
+                id: string
+                name: string
+                width: number
+                height: number
+                duration: number
+                fps: { num: number; den: number }
+                assets?: unknown[]
+                html?: string
+              }
+            >
+            skills?: NonNullable<Project['hyperframes']>['skills']
+            renderConfig?: NonNullable<Project['hyperframes']>['renderConfig']
+          }
+        | undefined
+
+      const projects = { ...(legacyHyperframes?.projects ?? {}) } as NonNullable<
+        Project['hyperframes']
+      >['projects']
+      const compositionLinks = { ...(legacyHyperframes?.compositionLinks ?? {}) } as NonNullable<
+        Project['hyperframes']
+      >['compositionLinks']
+      const now = project.updatedAt || project.createdAt || 0
+
+      for (const composition of Object.values(legacyHyperframes?.compositions ?? {})) {
+        const projectId = composition.id
+        const activeCompositionPath = `compositions/${composition.id}.html`
+        projects[projectId] = {
+          id: projectId,
+          name: composition.name,
+          schemaVersion: 1,
+          projectDir: `hyperframes/${projectId}`,
+          entryFile: 'index.html',
+          activeCompositionPath,
+          width: composition.width,
+          height: composition.height,
+          fps: composition.fps,
+          durationInFrames: Math.round(composition.duration * (composition.fps.num / composition.fps.den)),
+          assets: [],
+          compositions: [
+            {
+              id: composition.id,
+              path: activeCompositionPath,
+              name: composition.name,
+              durationInFrames: Math.round(
+                composition.duration * (composition.fps.num / composition.fps.den),
+              ),
+            },
+          ],
+          source: 'legacy-composition',
+          provenance: {
+            source: 'legacy-migration',
+            createdAt: now,
+            outputHash: stableHash(composition.html ?? composition.id),
+          },
+          warnings: ['Migrated from legacy embedded HyperFrames composition storage'],
+          unsupportedFeatures: [],
+          createdAt: now,
+          updatedAt: now,
+        }
+      }
+
+      for (const item of project.timeline?.items ?? []) {
+        if (item.type !== 'composition' || !item.compositionId) continue
+        const linkedProject = projects[item.compositionId]
+        if (!linkedProject) continue
+        compositionLinks[item.id] = {
+          timelineItemId: item.id,
+          projectId: item.compositionId,
+          sourceKind: 'hyperframes',
+          activeCompositionPath: linkedProject.activeCompositionPath,
+          manifestPath: `hyperframes/${item.compositionId}/manifest.json`,
+        }
+      }
+
+      return {
+        ...project,
+        hyperframes: {
+          schemaVersion: 1,
+          projects,
+          compositionLinks,
+          skills: legacyHyperframes?.skills ?? {
+            enabled: [],
+            history: [],
+          },
+          renderConfig: legacyHyperframes?.renderConfig ?? {
+            engine: 'freecut',
+            quality: 'production',
+          },
+        },
+      }
     },
   },
 }

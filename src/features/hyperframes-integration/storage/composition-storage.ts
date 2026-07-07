@@ -1,350 +1,371 @@
 /**
- * HyperFrames Composition存储服务
- *
- * 负责管理HyperFrames compositions的持久化存储
- * 使用OPFS（Origin Private File System）存储composition数据
+ * Manifest-backed HyperFrames project directory storage.
  */
 
-import type { HyperFramesComposition } from '@/types/hyperframes'
+import type { HyperFramesProjectDirectory, HyperFramesProjectManifest } from '@/types/hyperframes'
 
-// ============================================================================
-// 类型定义
-// ============================================================================
-
-/**
- * Composition存储元数据
- */
-export interface CompositionStorageMetadata {
-  /** Composition ID */
-  id: string
-  /** Composition名称 */
-  name: string
-  /** 创建时间戳 */
-  createdAt: number
-  /** 更新时间戳 */
-  updatedAt: number
-  /** 文件大小（字节） */
-  fileSize: number
-  /** OPFS路径 */
-  opfsPath: string
-}
-
-/**
- * 存储操作结果
- */
 export interface StorageResult<T = void> {
   success: boolean
   data?: T
   error?: string
 }
 
-// ============================================================================
-// CompositionStorage类
-// ============================================================================
+export interface HyperFramesFileSystemAdapter {
+  writeFile(path: string, contents: string): Promise<void>
+  readFile(path: string): Promise<string>
+  deleteFile(path: string): Promise<void>
+  deleteDirectory(path: string): Promise<void>
+  listFiles(prefix: string): Promise<string[]>
+  exists(path: string): Promise<boolean>
+}
 
-/**
- * HyperFrames Composition存储管理器
- *
- * 提供composition的CRUD操作，使用OPFS作为底层存储
- */
-export class CompositionStorage {
-  /** 存储根目录路径 */
-  private static readonly STORAGE_ROOT = 'hyperframes/compositions'
+export class InMemoryHyperFramesFileSystemAdapter implements HyperFramesFileSystemAdapter {
+  private files = new Map<string, string>()
 
-  /** 元数据索引文件名 */
-  private static readonly INDEX_FILE = 'index.json'
-
-  /** OPFS根目录句柄缓存 */
-  private rootHandle: FileSystemDirectoryHandle | null = null
-
-  /** 元数据索引缓存 */
-  private metadataIndex: Map<string, CompositionStorageMetadata> = new Map()
-
-  /**
-   * 构造函数
-   */
-  constructor() {
-    // 延迟初始化，在首次使用时获取OPFS访问权限
+  async writeFile(path: string, contents: string): Promise<void> {
+    this.files.set(normalizePath(path), contents)
   }
 
-  /**
-   * 初始化存储（获取OPFS根目录）
-   */
-  private async initialize(): Promise<void> {
-    if (this.rootHandle) {
-      return
+  async readFile(path: string): Promise<string> {
+    const normalized = normalizePath(path)
+    const contents = this.files.get(normalized)
+    if (contents === undefined) {
+      throw new Error(`File not found: ${normalized}`)
     }
-
-    try {
-      // 获取OPFS根目录
-      const root = await navigator.storage.getDirectory()
-
-      // 创建hyperframes/compositions目录结构
-      const hyperframesDir = await root.getDirectoryHandle('hyperframes', {
-        create: true,
-      })
-      this.rootHandle = await hyperframesDir.getDirectoryHandle('compositions', {
-        create: true,
-      })
-
-      // 加载元数据索引
-      await this.loadMetadataIndex()
-    } catch (error) {
-      console.error('Failed to initialize CompositionStorage:', error)
-      throw new Error('无法初始化存储系统')
-    }
+    return contents
   }
 
-  /**
-   * 加载元数据索引
-   */
-  private async loadMetadataIndex(): Promise<void> {
-    if (!this.rootHandle) {
-      throw new Error('存储未初始化')
-    }
-
-    try {
-      // 尝试读取索引文件
-      const indexFile = await this.rootHandle.getFileHandle(CompositionStorage.INDEX_FILE, {
-        create: false,
-      })
-      const file = await indexFile.getFile()
-      const text = await file.text()
-      const index = JSON.parse(text) as CompositionStorageMetadata[]
-
-      // 构建索引缓存
-      this.metadataIndex.clear()
-      for (const metadata of index) {
-        this.metadataIndex.set(metadata.id, metadata)
-      }
-    } catch (error) {
-      // 索引文件不存在或读取失败，使用空索引
-      console.warn('元数据索引不存在或读取失败，使用空索引')
-      this.metadataIndex.clear()
-    }
+  async deleteFile(path: string): Promise<void> {
+    this.files.delete(normalizePath(path))
   }
 
-  /**
-   * 保存元数据索引
-   */
-  private async saveMetadataIndex(): Promise<void> {
-    if (!this.rootHandle) {
-      throw new Error('存储未初始化')
-    }
-
-    const index = Array.from(this.metadataIndex.values())
-    const text = JSON.stringify(index, null, 2)
-
-    const indexFile = await this.rootHandle.getFileHandle(CompositionStorage.INDEX_FILE, {
-      create: true,
-    })
-    const writable = await indexFile.createWritable()
-    await writable.write(text)
-    await writable.close()
-  }
-
-  /**
-   * 保存composition到存储
-   *
-   * @param composition - 要保存的composition
-   * @returns 保存操作结果
-   */
-  async save(composition: HyperFramesComposition): Promise<StorageResult<string>> {
-    try {
-      await this.initialize()
-
-      if (!this.rootHandle) {
-        return {
-          success: false,
-          error: '存储未初始化',
-        }
-      }
-
-      // 生成文件名：{id}.json
-      const fileName = `${composition.id}.json`
-      const opfsPath = `${CompositionStorage.STORAGE_ROOT}/${fileName}`
-
-      // 序列化composition
-      const data = JSON.stringify(composition, null, 2)
-      const fileSize = new Blob([data]).size
-
-      // 写入文件
-      const fileHandle = await this.rootHandle.getFileHandle(fileName, {
-        create: true,
-      })
-      const writable = await fileHandle.createWritable()
-      await writable.write(data)
-      await writable.close()
-
-      // 更新元数据索引
-      const now = Date.now()
-      const metadata: CompositionStorageMetadata = {
-        id: composition.id,
-        name: composition.name,
-        createdAt: composition.createdAt || now,
-        updatedAt: now,
-        fileSize,
-        opfsPath,
-      }
-
-      this.metadataIndex.set(composition.id, metadata)
-      await this.saveMetadataIndex()
-
-      return {
-        success: true,
-        data: opfsPath,
-      }
-    } catch (error) {
-      console.error('Failed to save composition:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '保存失败',
+  async deleteDirectory(path: string): Promise<void> {
+    const prefix = ensureTrailingSlash(normalizePath(path))
+    for (const filePath of this.files.keys()) {
+      if (filePath.startsWith(prefix)) {
+        this.files.delete(filePath)
       }
     }
   }
 
-  /**
-   * 从存储加载composition
-   *
-   * @param id - Composition ID
-   * @returns 加载操作结果
-   */
-  async load(id: string): Promise<StorageResult<HyperFramesComposition>> {
-    try {
-      await this.initialize()
-
-      if (!this.rootHandle) {
-        return {
-          success: false,
-          error: '存储未初始化',
-        }
-      }
-
-      // 检查元数据索引
-      const metadata = this.metadataIndex.get(id)
-      if (!metadata) {
-        return {
-          success: false,
-          error: `Composition不存在: ${id}`,
-        }
-      }
-
-      // 读取文件
-      const fileName = `${id}.json`
-      const fileHandle = await this.rootHandle.getFileHandle(fileName, {
-        create: false,
-      })
-      const file = await fileHandle.getFile()
-      const text = await file.text()
-      const composition = JSON.parse(text) as HyperFramesComposition
-
-      return {
-        success: true,
-        data: composition,
-      }
-    } catch (error) {
-      console.error('Failed to load composition:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '加载失败',
-      }
-    }
+  async listFiles(prefix: string): Promise<string[]> {
+    const normalizedPrefix = ensureTrailingSlash(normalizePath(prefix))
+    return Array.from(this.files.keys())
+      .filter((path) => path.startsWith(normalizedPrefix))
+      .sort()
   }
 
-  /**
-   * 删除composition
-   *
-   * @param id - Composition ID
-   * @returns 删除操作结果
-   */
-  async delete(id: string): Promise<StorageResult> {
-    try {
-      await this.initialize()
-
-      if (!this.rootHandle) {
-        return {
-          success: false,
-          error: '存储未初始化',
-        }
-      }
-
-      // 检查是否存在
-      if (!this.metadataIndex.has(id)) {
-        return {
-          success: false,
-          error: `Composition不存在: ${id}`,
-        }
-      }
-
-      // 删除文件
-      const fileName = `${id}.json`
-      await this.rootHandle.removeEntry(fileName)
-
-      // 从元数据索引中移除
-      this.metadataIndex.delete(id)
-      await this.saveMetadataIndex()
-
-      return {
-        success: true,
-      }
-    } catch (error) {
-      console.error('Failed to delete composition:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '删除失败',
-      }
-    }
-  }
-
-  /**
-   * 列出所有compositions的元数据
-   *
-   * @returns 所有compositions的元数据列表
-   */
-  async list(): Promise<StorageResult<CompositionStorageMetadata[]>> {
-    try {
-      await this.initialize()
-
-      const metadataList = Array.from(this.metadataIndex.values())
-
-      // 按更新时间倒序排列（最新的在前）
-      metadataList.sort((a, b) => b.updatedAt - a.updatedAt)
-
-      return {
-        success: true,
-        data: metadataList,
-      }
-    } catch (error) {
-      console.error('Failed to list compositions:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : '列表获取失败',
-      }
-    }
-  }
-
-  /**
-   * 检查composition是否存在
-   *
-   * @param id - Composition ID
-   * @returns 是否存在
-   */
-  async exists(id: string): Promise<boolean> {
-    try {
-      await this.initialize()
-      return this.metadataIndex.has(id)
-    } catch (error) {
-      console.error('Failed to check composition existence:', error)
-      return false
-    }
+  async exists(path: string): Promise<boolean> {
+    return this.files.has(normalizePath(path))
   }
 }
 
-// ============================================================================
-// 导出单例实例
-// ============================================================================
+export class OpfsHyperFramesFileSystemAdapter implements HyperFramesFileSystemAdapter {
+  private rootHandle: Promise<FileSystemDirectoryHandle>
 
-/**
- * CompositionStorage单例实例
- */
-export const compositionStorage = new CompositionStorage()
+  constructor(rootHandle?: Promise<FileSystemDirectoryHandle>) {
+    this.rootHandle = rootHandle ?? navigator.storage.getDirectory()
+  }
+
+  async writeFile(path: string, contents: string): Promise<void> {
+    const fileHandle = await this.getFileHandle(path, true)
+    const writable = await fileHandle.createWritable()
+    await writable.write(contents)
+    await writable.close()
+  }
+
+  async readFile(path: string): Promise<string> {
+    const fileHandle = await this.getFileHandle(path, false)
+    return await (await fileHandle.getFile()).text()
+  }
+
+  async deleteFile(path: string): Promise<void> {
+    const { directory, fileName } = await this.getParentDirectory(path, false)
+    await directory.removeEntry(fileName)
+  }
+
+  async deleteDirectory(path: string): Promise<void> {
+    const { directory, fileName } = await this.getParentDirectory(path, false)
+    await directory.removeEntry(fileName, { recursive: true })
+  }
+
+  async listFiles(prefix: string): Promise<string[]> {
+    const root = await this.rootHandle
+    const normalizedPrefix = normalizePath(prefix)
+    const directory = await getDirectoryByPath(root, normalizedPrefix, false)
+    return await listDirectoryFiles(directory, normalizedPrefix)
+  }
+
+  async exists(path: string): Promise<boolean> {
+    try {
+      await this.getFileHandle(path, false)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  private async getFileHandle(path: string, create: boolean): Promise<FileSystemFileHandle> {
+    const { directory, fileName } = await this.getParentDirectory(path, create)
+    return await directory.getFileHandle(fileName, { create })
+  }
+
+  private async getParentDirectory(
+    path: string,
+    create: boolean,
+  ): Promise<{ directory: FileSystemDirectoryHandle; fileName: string }> {
+    const normalized = normalizePath(path)
+    assertSafeRelativePath(normalized)
+    const segments = normalized.split('/')
+    const fileName = segments.pop()
+    if (!fileName) {
+      throw new Error(`Invalid file path: ${path}`)
+    }
+
+    const root = await this.rootHandle
+    const directory = await getDirectoryBySegments(root, segments, create)
+    return { directory, fileName }
+  }
+}
+
+export class DirectoryHandleHyperFramesFileSystemAdapter extends OpfsHyperFramesFileSystemAdapter {
+  constructor(directoryHandle: FileSystemDirectoryHandle) {
+    super(Promise.resolve(directoryHandle))
+  }
+}
+
+export class HyperFramesProjectStorage {
+  private static readonly INDEX_PATH = 'hyperframes/index.json'
+
+  constructor(private adapter?: HyperFramesFileSystemAdapter) {}
+
+  async saveProject(projectDirectory: HyperFramesProjectDirectory): Promise<StorageResult<string>> {
+    try {
+      validateProjectDirectory(projectDirectory)
+
+      for (const [relativePath, contents] of Object.entries(projectDirectory.files)) {
+        assertSafeRelativePath(relativePath)
+        await this.getAdapter().writeFile(joinPath(projectDirectory.rootPath, relativePath), contents)
+      }
+
+      await this.updateIndex((manifests) => {
+        const next = manifests.filter((manifest) => manifest.id !== projectDirectory.manifest.id)
+        next.push(projectDirectory.manifest)
+        return next.sort((left, right) => right.updatedAt - left.updatedAt)
+      })
+
+      return {
+        success: true,
+        data: projectDirectory.rootPath,
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '保存 HyperFrames 项目失败',
+      }
+    }
+  }
+
+  async loadProject(projectId: string): Promise<StorageResult<HyperFramesProjectDirectory>> {
+    try {
+      const manifest = await this.getManifest(projectId)
+      const filePaths = await this.getAdapter().listFiles(manifest.projectDir)
+      const files: Record<string, string> = {}
+
+      for (const filePath of filePaths) {
+        const relativePath = filePath.slice(ensureTrailingSlash(manifest.projectDir).length)
+        files[relativePath] = await this.getAdapter().readFile(filePath)
+      }
+
+      return {
+        success: true,
+        data: {
+          projectId: manifest.id,
+          rootPath: manifest.projectDir,
+          manifest,
+          entryFile: manifest.entryFile,
+          activeCompositionPath: manifest.activeCompositionPath,
+          files,
+          fileIndex: Object.entries(files).map(([path, contents]) => ({
+            path,
+            contents,
+            kind:
+              path === 'manifest.json'
+                ? 'manifest'
+                : path === manifest.entryFile
+                  ? 'entry'
+                  : 'composition',
+            hash: stableHash(contents),
+          })),
+          assets: manifest.assets,
+          warnings: manifest.warnings ?? [],
+          unsupportedFeatures: manifest.unsupportedFeatures ?? [],
+        },
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '加载 HyperFrames 项目失败',
+      }
+    }
+  }
+
+  async deleteProject(projectId: string): Promise<StorageResult> {
+    try {
+      const manifest = await this.getManifest(projectId)
+      await this.getAdapter().deleteDirectory(manifest.projectDir)
+      await this.updateIndex((manifests) => manifests.filter((entry) => entry.id !== projectId))
+      return { success: true }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '删除 HyperFrames 项目失败',
+      }
+    }
+  }
+
+  async listProjects(): Promise<StorageResult<HyperFramesProjectManifest[]>> {
+    try {
+      return {
+        success: true,
+        data: await this.readIndex(),
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : '列出 HyperFrames 项目失败',
+      }
+    }
+  }
+
+  async exists(projectId: string): Promise<boolean> {
+    const manifest = await this.getManifestSafe(projectId)
+    return manifest
+      ? await this.getAdapter().exists(joinPath(manifest.projectDir, 'manifest.json'))
+      : false
+  }
+
+  private async getManifest(projectId: string): Promise<HyperFramesProjectManifest> {
+    const manifest = await this.getManifestSafe(projectId)
+    if (!manifest) {
+      throw new Error(`HyperFrames project not found: ${projectId}`)
+    }
+    return manifest
+  }
+
+  private async getManifestSafe(projectId: string): Promise<HyperFramesProjectManifest | null> {
+    return (await this.readIndex()).find((manifest) => manifest.id === projectId) ?? null
+  }
+
+  private async readIndex(): Promise<HyperFramesProjectManifest[]> {
+    try {
+      return JSON.parse(await this.getAdapter().readFile(HyperFramesProjectStorage.INDEX_PATH))
+    } catch {
+      return []
+    }
+  }
+
+  private async updateIndex(
+    updater: (manifests: HyperFramesProjectManifest[]) => HyperFramesProjectManifest[],
+  ): Promise<void> {
+    const next = updater(await this.readIndex())
+    await this.getAdapter().writeFile(
+      HyperFramesProjectStorage.INDEX_PATH,
+      JSON.stringify(next, null, 2),
+    )
+  }
+
+  private getAdapter(): HyperFramesFileSystemAdapter {
+    this.adapter ??= new OpfsHyperFramesFileSystemAdapter()
+    return this.adapter
+  }
+}
+
+export const compositionStorage = new HyperFramesProjectStorage()
+
+function validateProjectDirectory(projectDirectory: HyperFramesProjectDirectory): void {
+  assertSafeRelativePath(projectDirectory.rootPath)
+  if (projectDirectory.rootPath !== projectDirectory.manifest.projectDir) {
+    throw new Error('HyperFrames project rootPath must match manifest.projectDir')
+  }
+  if (!projectDirectory.files['manifest.json']) {
+    projectDirectory.files['manifest.json'] = JSON.stringify(projectDirectory.manifest, null, 2)
+  }
+  if (!projectDirectory.files[projectDirectory.manifest.entryFile]) {
+    throw new Error(`Missing HyperFrames entry file: ${projectDirectory.manifest.entryFile}`)
+  }
+  if (!projectDirectory.files[projectDirectory.manifest.activeCompositionPath]) {
+    throw new Error(
+      `Missing active HyperFrames composition: ${projectDirectory.manifest.activeCompositionPath}`,
+    )
+  }
+}
+
+function assertSafeRelativePath(path: string): void {
+  const normalized = normalizePath(path)
+  if (
+    normalized.startsWith('/') ||
+    normalized.includes('../') ||
+    normalized === '..' ||
+    normalized.includes('\0')
+  ) {
+    throw new Error(`Unsafe HyperFrames project path: ${path}`)
+  }
+}
+
+function normalizePath(path: string): string {
+  return path.replaceAll('\\', '/').replace(/\/+/g, '/').replace(/^\.\//, '').replace(/\/$/, '')
+}
+
+function ensureTrailingSlash(path: string): string {
+  return normalizePath(path) + '/'
+}
+
+function joinPath(...parts: string[]): string {
+  return normalizePath(parts.join('/'))
+}
+
+async function getDirectoryByPath(
+  root: FileSystemDirectoryHandle,
+  path: string,
+  create: boolean,
+): Promise<FileSystemDirectoryHandle> {
+  return await getDirectoryBySegments(root, normalizePath(path).split('/').filter(Boolean), create)
+}
+
+async function getDirectoryBySegments(
+  root: FileSystemDirectoryHandle,
+  segments: string[],
+  create: boolean,
+): Promise<FileSystemDirectoryHandle> {
+  let current = root
+  for (const segment of segments) {
+    current = await current.getDirectoryHandle(segment, { create })
+  }
+  return current
+}
+
+async function listDirectoryFiles(
+  directory: FileSystemDirectoryHandle,
+  prefix: string,
+): Promise<string[]> {
+  const paths: string[] = []
+  for await (const [name, handle] of directory.entries()) {
+    const path = joinPath(prefix, name)
+    if (handle.kind === 'file') {
+      paths.push(path)
+    } else {
+      paths.push(...(await listDirectoryFiles(handle as FileSystemDirectoryHandle, path)))
+    }
+  }
+  return paths.sort()
+}
+
+function stableHash(input: string): string {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193)
+  }
+  return `fnv1a-${(hash >>> 0).toString(16).padStart(8, '0')}`
+}

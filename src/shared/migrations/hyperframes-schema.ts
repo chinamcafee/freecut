@@ -162,7 +162,7 @@ export const HyperFramesCompositionSchema = z.object({
 /**
  * 渲染引擎Schema
  */
-export const RenderingEngineSchema = z.enum(['freecut', 'hyperframes', 'hybrid'])
+export const RenderingEngineSchema = z.enum(['freecut', 'hyperframes-producer', 'hybrid-overlay'])
 
 /**
  * 渲染质量Schema

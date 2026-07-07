@@ -149,7 +149,7 @@ export class MigrationRunner {
 
       // 按顺序应用每个迁移
       for (const migration of migrations) {
-        console.log(`应用迁移: v${migration.version} - ${migration.description}`)
+        console.warn(`应用迁移: v${migration.version} - ${migration.description}`)
         migratedProject = await migration.migrate(migratedProject)
         migratedProject.schemaVersion = migration.version
       }

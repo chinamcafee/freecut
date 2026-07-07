@@ -54,6 +54,21 @@ export interface HyperFramesAsset {
   hasAudio?: boolean // 视频是否包含音频
 }
 
+/**
+ * HyperFrames项目目录中的资源引用。
+ */
+export interface HyperFramesAssetRef {
+  id: string
+  type: MediaType
+  sourcePath: string
+  projectPath: string
+  hash: string
+  duration?: number
+  width?: number
+  height?: number
+  hasAudio?: boolean
+}
+
 // ============================================================================
 // Timeline元素类型
 // ============================================================================
@@ -194,44 +209,106 @@ export interface HyperFramesVariable {
 }
 
 // ============================================================================
-// Timeline中的HyperFrames Composition Item
+// Manifest-backed project directory model
 // ============================================================================
 
 /**
- * Timeline中的HyperFrames Composition Item
+ * HyperFrames project directory manifest.
  *
- * 用于在FreeCut Timeline中表示一个HyperFrames composition片段
+ * The canonical source for HyperFrames-backed animation lives in a project
+ * directory, not in a timeline item or JSON HTML blob.
  */
-export interface HyperFramesCompositionItem {
-  /** Item唯一标识符 */
+export interface HyperFramesProjectManifest {
   id: string
+  name: string
+  schemaVersion: number
+  projectDir: string
+  entryFile: 'index.html' | string
+  activeCompositionPath: string
+  width: number
+  height: number
+  fps: Fps
+  durationInFrames: number
+  backgroundColor?: string
+  assets: HyperFramesAssetRef[]
+  compositions: Array<{
+    id: string
+    path: string
+    name: string
+    durationInFrames: number
+  }>
+  source: 'freecut-export' | 'hyperframes-project' | 'legacy-composition' | 'skill-output'
+  provenance?: HyperFramesProvenance
+  warnings?: string[]
+  unsupportedFeatures?: string[]
+  createdAt: number
+  updatedAt: number
+}
 
-  /** 关联的Composition ID */
-  compositionId: string
+/**
+ * Mapping from a FreeCut composition timeline item to a HyperFrames project
+ * directory and active composition file.
+ */
+export interface HyperFramesCompositionLink {
+  timelineItemId: string
+  projectId: string
+  sourceKind: 'hyperframes'
+  activeCompositionPath: string
+  manifestPath: string
+  thumbnailPath?: string
+  renderCacheKey?: string
+  includeAudioInProducer?: boolean
+}
 
-  /** Composition HTML源码（可选，用于快速访问） */
-  compositionHtml?: string
+export interface HyperFramesProjectFile {
+  path: string
+  contents: string
+  kind: 'manifest' | 'entry' | 'composition' | 'asset-placeholder' | 'metadata'
+  hash: string
+}
 
-  /** 解析后的Composition数据 */
-  compositionData?: HyperFramesComposition
+export interface HyperFramesProjectDirectory {
+  projectId: string
+  rootPath: string
+  manifest: HyperFramesProjectManifest
+  entryFile: string
+  activeCompositionPath: string
+  files: Record<string, string>
+  fileIndex: HyperFramesProjectFile[]
+  assets: HyperFramesAssetRef[]
+  warnings: string[]
+  unsupportedFeatures: string[]
+}
 
-  /** 预览缩略图URL */
-  thumbnailUrl?: string
+export interface HyperFramesRenderCacheEntry {
+  key: string
+  projectId: string
+  status: 'pending' | 'ready' | 'error'
+  outputPath?: string
+  alphaPath?: string
+  renderedAt?: number
+  error?: string
+}
 
-  /** 渲染缓存信息 */
-  renderCache?: {
-    /** 预渲染的视频URL */
-    videoUrl: string
-    /** 渲染状态 */
-    status: 'pending' | 'ready' | 'error'
-    /** 错误信息 */
-    error?: string
-    /** 渲染时间戳 */
-    renderedAt?: number
+export interface HyperFramesProvenance {
+  source: 'freecut-export' | 'hyperframes-import' | 'skill-output' | 'legacy-migration'
+  inputHash?: string
+  outputHash?: string
+  skillId?: string
+  createdAt: number
+  confirmedByUser?: boolean
+}
+
+export interface HyperFramesIntegrationState {
+  schemaVersion: number
+  projects: Record<string, HyperFramesProjectManifest>
+  compositionLinks: Record<string, HyperFramesCompositionLink>
+  renderCache?: Record<string, HyperFramesRenderCacheEntry>
+  skills?: {
+    enabled: string[]
+    history: SkillExecutionHistory[]
   }
-
-  /** 传递给Composition的变量值 */
-  variableValues?: Record<string, unknown>
+  renderConfig?: HyperFramesRenderConfig
 }
 
 // ============================================================================
@@ -241,7 +318,7 @@ export interface HyperFramesCompositionItem {
 /**
  * 渲染引擎类型
  */
-export type RenderingEngine = 'freecut' | 'hyperframes' | 'hybrid'
+export type RenderingEngine = 'freecut' | 'hyperframes-producer' | 'hybrid-overlay'
 
 /**
  * 渲染质量预设

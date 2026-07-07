@@ -5,11 +5,7 @@ import type { CropSettings } from './transform'
 import type { TextStylePresetId } from '@/shared/typography/text-style-preset-ids'
 import type { TextLayoutDrafts, TextSpan, TextStyleFields } from './text'
 import type { TextMotionSpec } from './text-motion'
-import type {
-  HyperFramesComposition,
-  HyperFramesRenderConfig,
-  SkillExecutionHistory,
-} from './hyperframes'
+import type { HyperFramesIntegrationState } from './hyperframes'
 
 export interface Project {
   id: string
@@ -44,19 +40,7 @@ export interface Project {
    * 包含项目中使用的HyperFrames compositions、AI技能历史和渲染配置
    * 可选字段，确保向后兼容现有项目
    */
-  hyperframes?: {
-    /** Composition字典，key为composition ID */
-    compositions: Record<string, HyperFramesComposition>
-    /** AI技能相关配置 */
-    skills?: {
-      /** 已启用的技能列表 */
-      enabled: string[]
-      /** AI操作历史记录 */
-      history: SkillExecutionHistory[]
-    }
-    /** 渲染配置 */
-    renderConfig?: HyperFramesRenderConfig
-  }
+  hyperframes?: HyperFramesIntegrationState
 }
 
 export interface ProjectTimeline {
@@ -145,6 +129,10 @@ export interface ProjectTimeline {
       compositionId?: string // Reference to a sub-composition
       compositionWidth?: number
       compositionHeight?: number
+      sourceKind?: 'freecut' | 'hyperframes'
+      hyperframesProjectId?: string
+      activeCompositionPath?: string
+      hyperframesManifestPath?: string
       // Source dimensions (for video/image items)
       sourceWidth?: number
       sourceHeight?: number
