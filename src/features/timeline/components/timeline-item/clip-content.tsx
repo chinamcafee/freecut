@@ -1,5 +1,5 @@
 import { Suspense, lazy, memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { Link2 } from 'lucide-react'
+import { FileCode2, Link2 } from 'lucide-react'
 import { perfMarkRender } from '@/shared/logging/perf-marks'
 import type { TimelineItem } from '@/types/timeline'
 import { useSettingsStore } from '@/features/timeline/deps/settings'
@@ -401,6 +401,35 @@ export const ClipContent = memo(function ClipContent({
     [renderTitleText],
   )
 
+  const renderHyperFramesClipLabel = useCallback(
+    (label: string, activeCompositionPath?: string) => (
+      <div
+        className="flex min-w-0 items-center gap-1.5 px-2 text-[11px] font-medium truncate shrink-0"
+        style={{
+          height: EDITOR_LAYOUT_CSS_VALUES.timelineClipLabelRowHeight,
+          lineHeight: EDITOR_LAYOUT_CSS_VALUES.timelineClipLabelRowHeight,
+        }}
+      >
+        <span className="rounded bg-emerald-950/55 px-1.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-emerald-100">
+          HyperFrames
+        </span>
+        <span
+          className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-black/45 text-emerald-100"
+          title="Open HyperFrames Studio"
+        >
+          <FileCode2 className="h-3 w-3" />
+        </span>
+        <div className="min-w-0 flex-1">{renderTitleText(label)}</div>
+        {activeCompositionPath && (
+          <span className="hidden min-w-0 max-w-[45%] truncate text-[10px] text-emerald-50/80 sm:inline">
+            {activeCompositionPath}
+          </span>
+        )}
+      </div>
+    ),
+    [renderTitleText],
+  )
+
   const showVisualContent = clipWidth >= FILMSTRIP_MIN_WIDTH_PX && !deferVisual
 
   // Video clip 2-row layout: label | filmstrip
@@ -535,6 +564,21 @@ export const ClipContent = memo(function ClipContent({
 
   // Composition item - multi-segment filmstrip from visible sub-comp videos, or label fallback
   if (item.type === 'composition') {
+    if (item.sourceKind === 'hyperframes') {
+      const activeCompositionPath = item.activeCompositionPath ?? item.hyperframesManifestPath
+      return (
+        <div className="absolute inset-0 flex flex-col overflow-hidden">
+          {renderHyperFramesClipLabel(item.label || 'HyperFrames Composition', activeCompositionPath)}
+          {item.thumbnailUrl && showVisualContent && (
+            <div
+              className="min-h-0 flex-1 bg-cover bg-center opacity-90"
+              style={{ backgroundImage: `url(${item.thumbnailUrl})` }}
+            />
+          )}
+        </div>
+      )
+    }
+
     if (visualSegments.length > 0) {
       return (
         <div className="absolute inset-0 flex flex-col">

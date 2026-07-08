@@ -213,4 +213,29 @@ describe('ClipContent', () => {
     expect(screen.queryByTestId('clip-filmstrip')).toBeNull()
     expect(screen.getByText('Video clip')).toBeInTheDocument()
   })
+
+  it('renders HyperFrames-backed composition identity and Studio affordance on composition clips', () => {
+    const item: TimelineItem = {
+      id: 'hf-comp',
+      type: 'composition',
+      trackId: 'track-1',
+      from: 0,
+      durationInFrames: 120,
+      label: 'Intro animation',
+      compositionId: 'hf-project',
+      compositionWidth: 1920,
+      compositionHeight: 1080,
+      sourceKind: 'hyperframes',
+      hyperframesProjectId: 'hf-project',
+      activeCompositionPath: 'compositions/intro.html',
+      hyperframesManifestPath: 'hyperframes/hf-project/manifest.json',
+    } as TimelineItem
+
+    render(<ClipContent item={item} clipLeftFrames={0} clipWidthFrames={120} fps={30} />)
+
+    expect(screen.getByText('HyperFrames')).toBeInTheDocument()
+    expect(screen.getByText('compositions/intro.html')).toBeInTheDocument()
+    expect(screen.getByTitle('Open HyperFrames Studio')).toBeInTheDocument()
+    expect(screen.getByText('Intro animation')).toBeInTheDocument()
+  })
 })

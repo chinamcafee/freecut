@@ -251,6 +251,13 @@ export type CompositionItem = BaseTimelineItem & {
   // Dimensions of the sub-composition canvas
   compositionWidth: number
   compositionHeight: number
+  // HyperFrames-backed composition metadata. The timeline item remains the
+  // existing composition type; these fields only link it to project manifests.
+  sourceKind?: 'freecut' | 'hyperframes'
+  hyperframesProjectId?: string
+  activeCompositionPath?: string
+  hyperframesManifestPath?: string
+  thumbnailUrl?: string
 }
 
 /**
