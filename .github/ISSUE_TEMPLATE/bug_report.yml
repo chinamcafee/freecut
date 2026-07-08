@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a reproducible hyperCut issue
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Describe the problem and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: List exact steps, project data, browser, and media details.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - FreeCut timeline
+        - HyperFrames Studio
+        - Skills
+        - AI assistant
+        - Render/export
+        - Compatibility
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Chrome 113, Edge 113, Brave 113 with flags
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste relevant logs or attach screenshots/video.

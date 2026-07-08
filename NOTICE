@@ -1,0 +1,8 @@
+freecut / hyperCut integration
+
+This distribution includes FreeCut source code and the HyperFrames integration
+work prepared for the hyperCut v1.0 release.
+
+License details are provided in LICENSE. Third-party dependency licenses must be
+reviewed from the package lockfile and published with release artifacts when a
+binary or hosted distribution is produced.

@@ -1,0 +1,32 @@
+name: Feature request
+description: Suggest a hyperCut improvement
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What workflow is blocked or inefficient?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the behavior, UI, or API you want.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - FreeCut timeline
+        - HyperFrames Studio
+        - Skills
+        - AI assistant
+        - Render/export
+        - Documentation
+    validations:
+      required: true
