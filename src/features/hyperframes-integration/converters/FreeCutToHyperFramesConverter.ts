@@ -16,6 +16,7 @@ import type {
   HyperFramesProjectManifest,
   TimelineElement,
 } from '@/types/hyperframes'
+import { classifyUnsupportedFeatures } from './core-compat'
 
 export interface FreeCutConverterOptions {
   includeAudio?: boolean
@@ -61,6 +62,10 @@ export class FreeCutToHyperFramesConverter {
     }
 
     const composition = this.convertTimeline(project)
+    for (const warning of classifyUnsupportedFeatures(project.timeline.items)) {
+      this.addUnsupportedFeature(warning.feature)
+      this.addWarning(warning.message)
+    }
     const projectDirectory = this.assembleHyperFramesProject(project, composition)
 
     return {
@@ -351,21 +356,20 @@ export class FreeCutToHyperFramesConverter {
 </head>
 <body>
   <main data-hf-stage data-composition-id="main" data-width="${project.metadata.width}" data-height="${project.metadata.height}" data-fps="${project.metadata.fps}" data-duration-frames="${project.duration}">
-    ${this.generateTimelineItemsHtml(timeline)}
+    ${this.generateTimelineItemsHtml(timeline, project.metadata.fps)}
   </main>${keyframeScript}
 </body>
 </html>`
   }
 
-  private generateTimelineItemsHtml(timeline: ProjectTimeline): string {
+  private generateTimelineItemsHtml(timeline: ProjectTimeline, fps: number): string {
     return timeline.items
-      .map((item) => this.generateItemHtml(item, timeline))
+      .map((item) => this.generateItemHtml(item, timeline, fps))
       .filter((html): html is string => html !== null)
       .join('\n    ')
   }
 
-  private generateItemHtml(item: TimelineItem, timeline: ProjectTimeline): string | null {
-    const fps = 30
+  private generateItemHtml(item: TimelineItem, timeline: ProjectTimeline, fps: number): string | null {
     const attrs = this.generateItemDataAttributes(item, timeline, fps)
     const styleAttr = this.generateItemStyles(item, timeline)
     const style = styleAttr ? ` style="${styleAttr}"` : ''
@@ -399,6 +403,7 @@ export class FreeCutToHyperFramesConverter {
       `data-hf-type="${this.escapeAttribute(item.type)}"`,
       `data-start="${trimNumber(item.from / fps)}"`,
       `data-duration="${trimNumber(item.durationInFrames / fps)}"`,
+      `data-media-start="${trimNumber(getSourceStartFrames(item) / fps)}"`,
       `data-track-index="${this.getTrackIndex(item.trackId, timeline)}"`,
       `data-freecut-track-id="${this.escapeAttribute(item.trackId)}"`,
     ].join(' ')
@@ -571,6 +576,14 @@ function stableHash(input: string): string {
 
 function trimNumber(value: number): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+function getSourceStartFrames(item: TimelineItem): number {
+  const record = item as Record<string, unknown>
+  const sourceStart = record.sourceStart
+  if (typeof sourceStart === 'number') return sourceStart
+  const trimStart = record.trimStart
+  return typeof trimStart === 'number' ? trimStart : 0
 }
 
 function toBase64(input: string): string {
