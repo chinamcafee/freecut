@@ -1,3 +1,5 @@
+import i18n from "@/i18n";
+
 export interface PresenterPosition {
   sequenceId: string;
   slideIndex: number;
@@ -181,7 +183,7 @@ export function buildPresenterLayout(opts: {
   // they live in the console as a list.
   const branches = opts.hotspots.length
     ? `<div style="display:flex;flex-direction:column;gap:6px;">
-    <div style="font-size:12px;text-transform:uppercase;letter-spacing:.12em;opacity:.55;">Branches</div>
+    <div style="font-size:12px;text-transform:uppercase;letter-spacing:.12em;opacity:.55;">${esc(i18n.t("hyperframes.player.slideshow.branches"))}</div>
     ${opts.hotspots
       .map(
         (h) =>
@@ -192,14 +194,14 @@ export function buildPresenterLayout(opts: {
     : "";
   return `
 <div data-hf-presenter style="position:absolute;left:0;right:0;bottom:0;height:32%;display:flex;background:#11151f;color:#fff;border-top:2px solid rgba(255,255,255,0.12);box-sizing:border-box;font-family:sans-serif;pointer-events:auto;">
-  <textarea data-hf-presenter-notes data-hf-presenter-notes-key="${escAttr(opts.notesStorageKey ?? "")}" aria-label="Speaker notes" placeholder="No notes for this slide" spellcheck="true" style="flex:1;min-width:0;padding:24px 36px;overflow:auto;font:inherit;font-size:21px;line-height:1.55;color:#fff;background:transparent;border:0;outline:none;resize:none;white-space:pre-wrap;pointer-events:auto;">${notes}</textarea>
+  <textarea data-hf-presenter-notes data-hf-presenter-notes-key="${escAttr(opts.notesStorageKey ?? "")}" aria-label="${escAttr(i18n.t("hyperframes.player.slideshow.speakerNotes"))}" placeholder="${escAttr(i18n.t("hyperframes.player.slideshow.noNotes"))}" spellcheck="true" style="flex:1;min-width:0;padding:24px 36px;overflow:auto;font:inherit;font-size:21px;line-height:1.55;color:#fff;background:transparent;border:0;outline:none;resize:none;white-space:pre-wrap;pointer-events:auto;">${notes}</textarea>
   <div style="width:380px;flex-shrink:0;border-left:1px solid rgba(255,255,255,0.12);padding:24px 28px;display:flex;flex-direction:column;gap:10px;">
-    <div style="font-size:12px;text-transform:uppercase;letter-spacing:.12em;opacity:.55;">Up next</div>
+    <div style="font-size:12px;text-transform:uppercase;letter-spacing:.12em;opacity:.55;">${esc(i18n.t("hyperframes.player.slideshow.upNext"))}</div>
     <div data-hf-presenter-next style="font-size:17px;opacity:.9;line-height:1.4;">${esc(opts.nextText)}</div>
     ${branches}
     <div style="display:flex;gap:34px;margin-top:auto;">
-      <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.5;margin-bottom:3px;">Slide</div><div data-hf-presenter-counter style="font-family:${COUNTER_FONT_FAMILY};font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0;">${esc(opts.counterText)}</div></div>
-      <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.5;margin-bottom:3px;">Elapsed</div><div data-hf-presenter-elapsed style="font-family:${COUNTER_FONT_FAMILY};font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0;">${esc(opts.elapsedText)}</div></div>
+      <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.5;margin-bottom:3px;">${esc(i18n.t("hyperframes.player.slideshow.slide"))}</div><div data-hf-presenter-counter style="font-family:${COUNTER_FONT_FAMILY};font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0;">${esc(opts.counterText)}</div></div>
+      <div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.1em;opacity:.5;margin-bottom:3px;">${esc(i18n.t("hyperframes.player.slideshow.elapsed"))}</div><div data-hf-presenter-elapsed style="font-family:${COUNTER_FONT_FAMILY};font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0;">${esc(opts.elapsedText)}</div></div>
     </div>
   </div>
 </div>`.trim();

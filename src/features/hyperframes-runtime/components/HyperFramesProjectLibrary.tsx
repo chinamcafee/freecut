@@ -8,6 +8,8 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/shared/ui/cn'
 import type {
@@ -38,10 +40,11 @@ export function HyperFramesProjectLibrary({
   onValidate,
   onDelete,
 }: HyperFramesProjectLibraryProps) {
+  const { t } = useTranslation()
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-        Loading HyperFrames projects...
+        {t('hyperframes.library.loading')}
       </div>
     )
   }
@@ -58,7 +61,7 @@ export function HyperFramesProjectLibrary({
     return (
       <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center text-muted-foreground">
         <Box className="h-6 w-6" />
-        <p className="text-xs">No HyperFrames projects in this FreeCut project.</p>
+        <p className="text-xs">{t('hyperframes.library.empty')}</p>
       </div>
     )
   }
@@ -69,7 +72,10 @@ export function HyperFramesProjectLibrary({
         {entries.map((entry) => {
           const busy = busyProjectId === entry.id
           return (
-            <article key={entry.id} className="overflow-hidden rounded-md border border-border bg-secondary/20">
+            <article
+              key={entry.id}
+              className="overflow-hidden rounded-md border border-border bg-secondary/20"
+            >
               <div className="relative aspect-video overflow-hidden border-b border-border bg-zinc-950">
                 {entry.thumbnailUrl ? (
                   <img
@@ -91,7 +97,7 @@ export function HyperFramesProjectLibrary({
                     entry.status === 'ready' && 'bg-emerald-500/90 text-black',
                   )}
                 >
-                  {entry.status}
+                  {t(`hyperframes.library.status.${entry.status}`)}
                 </span>
                 <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
                   {entry.manifest.canvas.width}x{entry.manifest.canvas.height}
@@ -102,40 +108,47 @@ export function HyperFramesProjectLibrary({
                 <div className="min-w-0">
                   <h3 className="truncate text-xs font-medium">{entry.title}</h3>
                   <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-                    <span>{entry.referenceCount} timeline references</span>
-                    <span>{formatCacheStatus(entry.cacheStatus)}</span>
+                    <span>
+                      {t('hyperframes.library.timelineReferences', {
+                        count: entry.referenceCount,
+                      })}
+                    </span>
+                    <span>{formatCacheStatus(entry.cacheStatus, t)}</span>
                   </div>
                 </div>
 
                 {(entry.blockingCount > 0 || entry.warningCount > 0) && (
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                     <AlertTriangle className="h-3 w-3" />
-                    {entry.blockingCount} blocking · {entry.warningCount} warnings
+                    {t('hyperframes.library.blockingWarnings', {
+                      blocking: entry.blockingCount,
+                      warnings: entry.warningCount,
+                    })}
                   </div>
                 )}
 
                 <div className="flex items-center justify-between gap-1 border-t border-border pt-2">
                   <div className="flex gap-1">
                     <LibraryAction
-                      label={`Insert ${entry.title}`}
+                      label={t('hyperframes.library.insert', { title: entry.title })}
                       icon={Plus}
                       disabled={busy || !onInsert}
                       onClick={() => onInsert?.(entry)}
                     />
                     <LibraryAction
-                      label={`Open ${entry.title} in Studio`}
+                      label={t('hyperframes.library.open', { title: entry.title })}
                       icon={ExternalLink}
                       disabled={busy || !onOpen}
                       onClick={() => onOpen?.(entry)}
                     />
                     <LibraryAction
-                      label={`Export ${entry.title}`}
+                      label={t('hyperframes.library.export', { title: entry.title })}
                       icon={Download}
                       disabled={busy || !onExport}
                       onClick={() => onExport?.(entry)}
                     />
                     <LibraryAction
-                      label={`Validate ${entry.title}`}
+                      label={t('hyperframes.library.validate', { title: entry.title })}
                       icon={RefreshCw}
                       disabled={busy || !onValidate}
                       onClick={() => onValidate?.(entry)}
@@ -144,8 +157,8 @@ export function HyperFramesProjectLibrary({
                   <LibraryAction
                     label={
                       entry.referenceCount > 0
-                        ? `Cannot delete ${entry.title}: project is referenced`
-                        : `Delete ${entry.title}`
+                        ? t('hyperframes.library.cannotDelete', { title: entry.title })
+                        : t('hyperframes.library.delete', { title: entry.title })
                     }
                     icon={Trash2}
                     destructive
@@ -192,8 +205,6 @@ function LibraryAction({
   )
 }
 
-function formatCacheStatus(status: HyperFramesProjectLibraryCacheStatus): string {
-  if (status === 'cached') return 'render cached'
-  if (status === 'stale') return 'cache stale'
-  return 'not rendered'
+function formatCacheStatus(status: HyperFramesProjectLibraryCacheStatus, t: TFunction): string {
+  return t(`hyperframes.library.cache.${status}`)
 }

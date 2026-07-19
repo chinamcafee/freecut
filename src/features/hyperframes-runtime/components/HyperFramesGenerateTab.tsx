@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Check,
   ChevronRight,
@@ -10,7 +11,13 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/shared/ui/cn'
 import type { ModelRoutingPlan } from '../model-center'
@@ -29,8 +36,8 @@ import { hyperFramesUiSkillCatalog } from './uiSkillCatalog'
 
 interface GenerateTemplate {
   id: string
-  label: string
-  prompt: string
+  labelKey: string
+  promptKey: string
   intentKind: HyperFramesGenerationIntentKind
   durationSeconds: number
   aspectRatio: string
@@ -40,8 +47,8 @@ interface GenerateTemplate {
 const GENERATE_TEMPLATES: GenerateTemplate[] = [
   {
     id: 'intro',
-    label: 'Intro',
-    prompt: 'Create a clean 6 second animated intro with a logo reveal and title.',
+    labelKey: 'hyperframes.generate.templates.intro.label',
+    promptKey: 'hyperframes.generate.templates.intro.prompt',
     intentKind: 'overlay',
     durationSeconds: 6,
     aspectRatio: '16:9',
@@ -49,8 +56,8 @@ const GENERATE_TEMPLATES: GenerateTemplate[] = [
   },
   {
     id: 'captions',
-    label: 'Captions',
-    prompt: 'Add polished embedded captions to the selected talking-head video.',
+    labelKey: 'hyperframes.generate.templates.captions.label',
+    promptKey: 'hyperframes.generate.templates.captions.prompt',
     intentKind: 'caption-package',
     durationSeconds: 30,
     aspectRatio: '16:9',
@@ -58,8 +65,8 @@ const GENERATE_TEMPLATES: GenerateTemplate[] = [
   },
   {
     id: 'product',
-    label: 'Product',
-    prompt: 'Create a concise SaaS product launch video with key benefits and a call to action.',
+    labelKey: 'hyperframes.generate.templates.product.label',
+    promptKey: 'hyperframes.generate.templates.product.prompt',
     intentKind: 'new-video',
     durationSeconds: 30,
     aspectRatio: '16:9',
@@ -67,8 +74,8 @@ const GENERATE_TEMPLATES: GenerateTemplate[] = [
   },
   {
     id: 'website',
-    label: 'Website',
-    prompt: 'Turn https://example.com into a SaaS product promo video showing the main benefits.',
+    labelKey: 'hyperframes.generate.templates.website.label',
+    promptKey: 'hyperframes.generate.templates.website.prompt',
     intentKind: 'new-video',
     durationSeconds: 30,
     aspectRatio: '16:9',
@@ -76,8 +83,8 @@ const GENERATE_TEMPLATES: GenerateTemplate[] = [
   },
   {
     id: 'motion',
-    label: 'Motion',
-    prompt: 'Create an 8 second motion graphics title with a stat count-up and callout.',
+    labelKey: 'hyperframes.generate.templates.motion.label',
+    promptKey: 'hyperframes.generate.templates.motion.prompt',
     intentKind: 'overlay',
     durationSeconds: 8,
     aspectRatio: '16:9',
@@ -85,8 +92,8 @@ const GENERATE_TEMPLATES: GenerateTemplate[] = [
   },
   {
     id: 'music',
-    label: 'Music',
-    prompt: 'Create a beat-synced music video from the selected audio and images.',
+    labelKey: 'hyperframes.generate.templates.music.label',
+    promptKey: 'hyperframes.generate.templates.music.prompt',
     intentKind: 'new-video',
     durationSeconds: 30,
     aspectRatio: '9:16',
@@ -94,8 +101,8 @@ const GENERATE_TEMPLATES: GenerateTemplate[] = [
   },
   {
     id: 'explainer',
-    label: 'Explainer',
-    prompt: 'Turn the supplied article into a clear 60 second faceless explainer video.',
+    labelKey: 'hyperframes.generate.templates.explainer.label',
+    promptKey: 'hyperframes.generate.templates.explainer.prompt',
     intentKind: 'new-video',
     durationSeconds: 60,
     aspectRatio: '16:9',
@@ -125,6 +132,7 @@ export function HyperFramesGenerateTab({
   onPlanReady,
   onPlanConfirmed,
 }: HyperFramesGenerateTabProps) {
+  const { t } = useTranslation()
   const [prompt, setPrompt] = useState('')
   const [intentKind, setIntentKind] = useState<HyperFramesGenerationIntentKind>('new-video')
   const [durationSeconds, setDurationSeconds] = useState(30)
@@ -148,7 +156,7 @@ export function HyperFramesGenerateTab({
 
   const applyTemplate = (template: GenerateTemplate) => {
     setActiveTemplateId(template.id)
-    setPrompt(template.prompt)
+    setPrompt(t(template.promptKey))
     setIntentKind(template.intentKind)
     setDurationSeconds(template.durationSeconds)
     setAspectRatio(template.aspectRatio)
@@ -189,12 +197,17 @@ export function HyperFramesGenerateTab({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <WandSparkles className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-medium">HyperFrames Generate</h2>
+          <h2 className="text-sm font-medium">{t('hyperframes.generate.title')}</h2>
         </div>
-        <span className="text-[10px] text-muted-foreground">Source-linked</span>
+        <span className="text-[10px] text-muted-foreground">
+          {t('hyperframes.generate.sourceLinked')}
+        </span>
       </div>
 
-      <div className="grid grid-cols-4 gap-1.5" aria-label="Quick generation templates">
+      <div
+        className="grid grid-cols-4 gap-1.5"
+        aria-label={t('hyperframes.generate.quickTemplates')}
+      >
         {GENERATE_TEMPLATES.map((template) => (
           <Button
             key={template.id}
@@ -204,20 +217,20 @@ export function HyperFramesGenerateTab({
             className="h-7 min-w-0 px-1.5 text-[10px]"
             onClick={() => applyTemplate(template)}
           >
-            {template.label}
+            {t(template.labelKey)}
           </Button>
         ))}
       </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="hyperframes-generate-prompt" className="text-xs">
-          Describe the result
+          {t('hyperframes.generate.describeResult')}
         </Label>
         <Textarea
           id="hyperframes-generate-prompt"
           value={prompt}
           onChange={(event) => updatePrompt(event.target.value)}
-          placeholder="Create a short product video from a URL, script, or selected clips..."
+          placeholder={t('hyperframes.generate.promptPlaceholder')}
           className="min-h-20 resize-y bg-secondary/30 text-xs"
         />
       </div>
@@ -225,7 +238,7 @@ export function HyperFramesGenerateTab({
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
           <Label htmlFor="hyperframes-duration" className="text-[11px] text-muted-foreground">
-            Duration
+            {t('hyperframes.generate.duration')}
           </Label>
           <Select
             value={String(durationSeconds)}
@@ -240,7 +253,7 @@ export function HyperFramesGenerateTab({
             <SelectContent>
               {[6, 8, 15, 30, 60].map((seconds) => (
                 <SelectItem key={seconds} value={String(seconds)}>
-                  {seconds} seconds
+                  {t('hyperframes.common.seconds', { count: seconds })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -248,7 +261,7 @@ export function HyperFramesGenerateTab({
         </div>
         <div className="space-y-1">
           <Label htmlFor="hyperframes-aspect" className="text-[11px] text-muted-foreground">
-            Frame
+            {t('hyperframes.generate.frame')}
           </Label>
           <Select
             value={aspectRatio}
@@ -261,9 +274,9 @@ export function HyperFramesGenerateTab({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="16:9">16:9 Landscape</SelectItem>
-              <SelectItem value="9:16">9:16 Portrait</SelectItem>
-              <SelectItem value="1:1">1:1 Square</SelectItem>
+              <SelectItem value="16:9">{t('hyperframes.generate.landscape')}</SelectItem>
+              <SelectItem value="9:16">{t('hyperframes.generate.portrait')}</SelectItem>
+              <SelectItem value="1:1">{t('hyperframes.generate.square')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -272,9 +285,11 @@ export function HyperFramesGenerateTab({
       {selectedRecommendation && prompt.trim() && (
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium">Recommended skills</span>
+            <span className="text-[11px] font-medium">
+              {t('hyperframes.generate.recommendedSkills')}
+            </span>
             <span className="text-[10px] text-muted-foreground">
-              {recommendations.length} matches
+              {t('hyperframes.generate.matches', { count: recommendations.length })}
             </span>
           </div>
           <div className="space-y-1">
@@ -295,7 +310,9 @@ export function HyperFramesGenerateTab({
                 >
                   <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary" />
                   <span className="min-w-0 flex-1 truncate text-xs">
-                    {formatSkillTitle(recommendation.skill.id)}
+                    {t(`hyperframes.skills.${recommendation.skill.id}`, {
+                      defaultValue: formatSkillTitle(recommendation.skill.id),
+                    })}
                   </span>
                   <span className="text-[10px] tabular-nums text-muted-foreground">
                     {recommendation.score}
@@ -327,7 +344,7 @@ export function HyperFramesGenerateTab({
         {plan && plan.status === 'draft' && (
           <Button type="button" size="sm" variant="outline" onClick={confirmPlan}>
             <Check className="h-3.5 w-3.5" />
-            Confirm plan
+            {t('hyperframes.generate.confirmPlan')}
           </Button>
         )}
         <Button
@@ -337,7 +354,11 @@ export function HyperFramesGenerateTab({
           disabled={!prompt.trim() || !selectedRecommendation || plan?.status === 'confirmed'}
         >
           <WandSparkles className="h-3.5 w-3.5" />
-          {plan?.status === 'confirmed' ? 'Plan confirmed' : plan ? 'Update plan' : 'Create plan'}
+          {plan?.status === 'confirmed'
+            ? t('hyperframes.generate.planConfirmed')
+            : plan
+              ? t('hyperframes.generate.updatePlan')
+              : t('hyperframes.generate.createPlan')}
         </Button>
       </div>
     </section>
@@ -357,33 +378,72 @@ function OutputSummary({
   skill: HyperFramesSkillDefinition
   transparent: boolean
 }) {
+  const { t } = useTranslation()
   const capabilities = skill.modelRequirements.map((requirement) => requirement.kind)
   const importStrategy = plan?.importStrategy ?? inferUiImportStrategy(skill.id)
   const estimatedCost = plan?.modelBudget.estimatedMaxCost ?? estimateSkillCost(skill)
 
   return (
-    <div className="space-y-2 rounded-md border border-border bg-secondary/20 p-2.5" aria-label="Generation plan summary">
+    <div
+      className="space-y-2 rounded-md border border-border bg-secondary/20 p-2.5"
+      aria-label={t('hyperframes.generate.summaryLabel')}
+    >
       <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
-        <SummaryValue icon={Layers3} label="Output" value="Project directory" />
-        <SummaryValue icon={Clock3} label="Estimate" value={`${durationSeconds}s / ~${Math.max(1, Math.ceil(durationSeconds / 6))} min`} />
-        <SummaryValue icon={DollarSign} label="Max cost" value={`$${estimatedCost.toFixed(2)} USD`} />
-        <SummaryValue icon={Sparkles} label="Frame" value={aspectRatio} />
+        <SummaryValue
+          icon={Layers3}
+          label={t('hyperframes.generate.output')}
+          value={t('hyperframes.generate.projectDirectory')}
+        />
+        <SummaryValue
+          icon={Clock3}
+          label={t('hyperframes.generate.estimate')}
+          value={t('hyperframes.generate.estimateValue', {
+            seconds: durationSeconds,
+            minutes: Math.max(1, Math.ceil(durationSeconds / 6)),
+          })}
+        />
+        <SummaryValue
+          icon={DollarSign}
+          label={t('hyperframes.generate.maxCost')}
+          value={`$${estimatedCost.toFixed(2)} USD`}
+        />
+        <SummaryValue icon={Sparkles} label={t('hyperframes.generate.frame')} value={aspectRatio} />
       </div>
       <div className="flex flex-wrap gap-1">
         {(capabilities.length > 0 ? capabilities : ['text-planning']).map((capability) => (
-          <span key={capability} className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
-            {capability}
+          <span
+            key={capability}
+            className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground"
+          >
+            {t(`hyperframes.enums.${capability.replaceAll('-', '_')}`, {
+              defaultValue: capability,
+            })}
           </span>
         ))}
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-        <span>{transparent ? 'Transparent background' : 'Opaque background'}</span>
-        <span>{importStrategy === 'rendered-media' ? 'Rendered media' : 'Source-linked composition'}</span>
-        <span>{importStrategy === 'source-link-with-approximations' ? 'Native approximations' : 'No native approximations'}</span>
+        <span>
+          {transparent
+            ? t('hyperframes.generate.transparentBackground')
+            : t('hyperframes.generate.opaqueBackground')}
+        </span>
+        <span>
+          {importStrategy === 'rendered-media'
+            ? t('hyperframes.generate.renderedMedia')
+            : t('hyperframes.generate.sourceLinkedComposition')}
+        </span>
+        <span>
+          {importStrategy === 'source-link-with-approximations'
+            ? t('hyperframes.generate.nativeApproximations')
+            : t('hyperframes.generate.noNativeApproximations')}
+        </span>
       </div>
       {plan && (
         <div className="border-t border-border pt-2 text-[10px] text-muted-foreground">
-          {plan.steps.length} steps · {plan.output.directory}
+          {t('hyperframes.generate.stepsAndDirectory', {
+            count: plan.steps.length,
+            directory: plan.output.directory,
+          })}
         </div>
       )}
     </div>

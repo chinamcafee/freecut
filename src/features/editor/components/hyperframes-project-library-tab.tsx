@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { useProjectStore } from '@/features/editor/deps/projects'
 import { useTimelineStore } from '@/features/editor/deps/timeline-store'
@@ -6,16 +7,12 @@ import { usePlaybackStore } from '@/shared/state/playback'
 import { useSelectionStore } from '@/shared/state/selection'
 import type { HyperFramesProjectManifest } from '@/types/hyperframes'
 import type { CompositionItem } from '@/types/timeline'
-import {
-  HyperFramesProjectLibrary,
-} from '@/features/hyperframes-runtime/components/HyperFramesProjectLibrary'
+import { HyperFramesProjectLibrary } from '@/features/hyperframes-runtime/components/HyperFramesProjectLibrary'
 import {
   createHyperFramesProjectLibraryEntries,
   type HyperFramesProjectLibraryEntry,
 } from '@/features/hyperframes-runtime/components/projectLibraryModel'
-import {
-  createWorkspaceHyperFramesProjectRepository,
-} from '@/features/hyperframes-runtime/adapters/freecut-project/file-system-project-repository'
+import { createWorkspaceHyperFramesProjectRepository } from '@/features/hyperframes-runtime/adapters/freecut-project/file-system-project-repository'
 import { packHyperFramesProjectDirectory } from '@/features/hyperframes-runtime/adapters/freecut-project/project-directory-bundle'
 import type { HyperFramesProjectRepository } from '@/features/hyperframes-runtime/adapters/freecut-project/project-repository'
 import { emitFreeCutStudioOpenRequest } from '@/features/hyperframes-runtime/bridges/studio-bridge/studioEvents'
@@ -25,6 +22,7 @@ import {
 } from '@/features/hyperframes-runtime/events/projectEvents'
 
 export function HyperFramesProjectLibraryTab() {
+  const { t } = useTranslation()
   const freecutProjectId = useProjectStore((state) => state.currentProject?.id)
   const timelineItems = useTimelineStore((state) => state.items)
   const tracks = useTimelineStore((state) => state.tracks)
@@ -52,20 +50,17 @@ export function HyperFramesProjectLibraryTab() {
       const loaded = await Promise.all(refs.map((ref) => repository.readManifest(ref.id)))
       setManifests(loaded.filter((value): value is HyperFramesProjectManifest => Boolean(value)))
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load projects')
+      setError(loadError instanceof Error ? loadError.message : t('hyperframes.library.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [freecutProjectId])
+  }, [freecutProjectId, t])
 
   useEffect(() => {
     void loadProjects()
   }, [loadProjects])
 
-  useEffect(
-    () => subscribeHyperFramesProjectUpdated(() => void loadProjects()),
-    [loadProjects],
-  )
+  useEffect(() => subscribeHyperFramesProjectUpdated(() => void loadProjects()), [loadProjects])
 
   const entries = useMemo(
     () => createHyperFramesProjectLibraryEntries({ manifests, timelineItems }),
@@ -111,14 +106,14 @@ export function HyperFramesProjectLibraryTab() {
     (entry: HyperFramesProjectLibraryEntry) => {
       const item = createTimelineItem(entry)
       if (!item) {
-        toast.error('No unlocked video track is available')
+        toast.error(t('hyperframes.library.noUnlockedTrack'))
         return
       }
       addItem(item)
       selectItems([item.id])
-      toast.success(`Inserted ${entry.title}`)
+      toast.success(t('hyperframes.library.inserted', { title: entry.title }))
     },
-    [addItem, createTimelineItem, selectItems],
+    [addItem, createTimelineItem, selectItems, t],
   )
 
   const handleOpen = useCallback(
@@ -131,89 +126,110 @@ export function HyperFramesProjectLibraryTab() {
       )
       const item = linkedItem ?? createTimelineItem(entry)
       if (!item) {
-        toast.error('No video track is available to open this project')
+        toast.error(t('hyperframes.library.noTrackToOpen'))
         return
       }
       emitFreeCutStudioOpenRequest({ item: { ...item, sourceKind: 'hyperframes' } })
     },
-    [createTimelineItem, timelineItems],
+    [createTimelineItem, t, timelineItems],
   )
 
-  const handleExport = useCallback(async (entry: HyperFramesProjectLibraryEntry) => {
-    const repository = repositoryRef.current
-    if (!repository) return
-    setBusyProjectId(entry.id)
-    try {
-      const directory = await repository.readProjectDirectory(entry.id)
-      if (!directory) throw new Error('Project directory not found')
-      const bytes = packHyperFramesProjectDirectory(directory)
-      const url = URL.createObjectURL(
-        new Blob([bytes.buffer as ArrayBuffer], { type: 'application/zip' }),
-      )
-      const anchor = document.createElement('a')
-      anchor.href = url
-      anchor.download = `${entry.id}.hyperframes.zip`
-      anchor.click()
-      URL.revokeObjectURL(url)
-    } catch (exportError) {
-      toast.error(exportError instanceof Error ? exportError.message : 'Export failed')
-    } finally {
-      setBusyProjectId(undefined)
-    }
-  }, [])
+  const handleExport = useCallback(
+    async (entry: HyperFramesProjectLibraryEntry) => {
+      const repository = repositoryRef.current
+      if (!repository) return
+      setBusyProjectId(entry.id)
+      try {
+        const directory = await repository.readProjectDirectory(entry.id)
+        if (!directory) throw new Error(t('hyperframes.library.directoryNotFound'))
+        const bytes = packHyperFramesProjectDirectory(directory)
+        const url = URL.createObjectURL(
+          new Blob([bytes.buffer as ArrayBuffer], { type: 'application/zip' }),
+        )
+        const anchor = document.createElement('a')
+        anchor.href = url
+        anchor.download = `${entry.id}.hyperframes.zip`
+        anchor.click()
+        URL.revokeObjectURL(url)
+      } catch (exportError) {
+        toast.error(
+          exportError instanceof Error
+            ? exportError.message
+            : t('hyperframes.library.exportFailed'),
+        )
+      } finally {
+        setBusyProjectId(undefined)
+      }
+    },
+    [t],
+  )
 
-  const handleValidate = useCallback(async (entry: HyperFramesProjectLibraryEntry) => {
-    const repository = repositoryRef.current
-    if (!repository) return
-    setBusyProjectId(entry.id)
-    try {
-      const directory = await repository.readProjectDirectory(entry.id)
-      if (!directory) throw new Error('Project directory not found')
-      const { hyperFramesLintAdapter } =
-        await import('@/features/hyperframes-runtime/adapters/freecut-project/lint-adapter')
-      const result = await hyperFramesLintAdapter.lintProjectDirectory(directory, {
-        stage: 'preview',
-      })
-      const diagnostics = result.diagnostics
-      await repository.writeManifest(
-        entry.id,
-        {
-          ...directory.manifest,
-          diagnostics,
-          lintSummary: {
-            checkedAt: Date.now(),
-            blockingCount: diagnostics.filter((item) => item.severity === 'blocking').length,
-            warningCount: diagnostics.filter((item) => item.severity === 'warning').length,
-            suggestionCount: diagnostics.filter((item) => item.severity === 'suggestion').length,
+  const handleValidate = useCallback(
+    async (entry: HyperFramesProjectLibraryEntry) => {
+      const repository = repositoryRef.current
+      if (!repository) return
+      setBusyProjectId(entry.id)
+      try {
+        const directory = await repository.readProjectDirectory(entry.id)
+        if (!directory) throw new Error(t('hyperframes.library.directoryNotFound'))
+        const { hyperFramesLintAdapter } =
+          await import('@/features/hyperframes-runtime/adapters/freecut-project/lint-adapter')
+        const result = await hyperFramesLintAdapter.lintProjectDirectory(directory, {
+          stage: 'preview',
+        })
+        const diagnostics = result.diagnostics
+        await repository.writeManifest(
+          entry.id,
+          {
+            ...directory.manifest,
             diagnostics,
+            lintSummary: {
+              checkedAt: Date.now(),
+              blockingCount: diagnostics.filter((item) => item.severity === 'blocking').length,
+              warningCount: diagnostics.filter((item) => item.severity === 'warning').length,
+              suggestionCount: diagnostics.filter((item) => item.severity === 'suggestion').length,
+              diagnostics,
+            },
           },
-        },
-        { reason: 'Validate project from library' },
-      )
-      emitHyperFramesProjectUpdated(entry.id)
-      await loadProjects()
-    } catch (validationError) {
-      toast.error(validationError instanceof Error ? validationError.message : 'Validation failed')
-    } finally {
-      setBusyProjectId(undefined)
-    }
-  }, [loadProjects])
+          { reason: 'Validate project from library' },
+        )
+        emitHyperFramesProjectUpdated(entry.id)
+        await loadProjects()
+      } catch (validationError) {
+        toast.error(
+          validationError instanceof Error
+            ? validationError.message
+            : t('hyperframes.library.validationFailed'),
+        )
+      } finally {
+        setBusyProjectId(undefined)
+      }
+    },
+    [loadProjects, t],
+  )
 
-  const handleDelete = useCallback(async (entry: HyperFramesProjectLibraryEntry) => {
-    if (entry.referenceCount > 0) return
-    const repository = repositoryRef.current
-    if (!repository) return
-    setBusyProjectId(entry.id)
-    try {
-      await repository.deleteProject(entry.id)
-      await loadProjects()
-      toast.success(`Deleted ${entry.title}`)
-    } catch (deleteError) {
-      toast.error(deleteError instanceof Error ? deleteError.message : 'Delete failed')
-    } finally {
-      setBusyProjectId(undefined)
-    }
-  }, [loadProjects])
+  const handleDelete = useCallback(
+    async (entry: HyperFramesProjectLibraryEntry) => {
+      if (entry.referenceCount > 0) return
+      const repository = repositoryRef.current
+      if (!repository) return
+      setBusyProjectId(entry.id)
+      try {
+        await repository.deleteProject(entry.id)
+        await loadProjects()
+        toast.success(t('hyperframes.library.deleted', { title: entry.title }))
+      } catch (deleteError) {
+        toast.error(
+          deleteError instanceof Error
+            ? deleteError.message
+            : t('hyperframes.library.deleteFailed'),
+        )
+      } finally {
+        setBusyProjectId(undefined)
+      }
+    },
+    [loadProjects, t],
+  )
 
   return (
     <HyperFramesProjectLibrary

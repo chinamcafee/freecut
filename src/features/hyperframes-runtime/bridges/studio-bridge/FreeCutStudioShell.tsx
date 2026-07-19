@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +56,7 @@ export const FreeCutStudioShell = memo(function FreeCutStudioShell({
   repositoryFactory,
   className,
 }: FreeCutStudioShellProps) {
+  const { t } = useTranslation()
   const session = useFreeCutStudioSession({
     freecutProjectId,
     item,
@@ -159,7 +161,7 @@ export const FreeCutStudioShell = memo(function FreeCutStudioShell({
   if (!item) return null
 
   const ready = session.state.status === 'ready' ? session.state : null
-  const title = ready?.manifest.title ?? item.label ?? 'HyperFrames Studio'
+  const title = ready?.manifest.title ?? item.label ?? t('hyperframes.studio.title')
 
   return (
     <div
@@ -174,7 +176,7 @@ export const FreeCutStudioShell = memo(function FreeCutStudioShell({
       data-hf-studio-icon-library={theme.iconLibrary}
       role="dialog"
       aria-modal="true"
-      aria-label="HyperFrames Studio"
+      aria-label={t('hyperframes.studio.title')}
       onKeyDownCapture={handleKeyDownCapture}
     >
       {ready ? (
@@ -211,13 +213,13 @@ export const FreeCutStudioShell = memo(function FreeCutStudioShell({
               className="text-neutral-300 hover:bg-neutral-800 hover:text-white"
               onClick={requestClose}
             >
-              Close
+              {t('hyperframes.common.close')}
             </Button>
           </div>
           <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-neutral-400">
             {session.state.status === 'error'
               ? session.state.message
-              : 'Loading HyperFrames Studio...'}
+              : t('hyperframes.studio.loading')}
           </div>
         </div>
       )}
@@ -225,21 +227,21 @@ export const FreeCutStudioShell = memo(function FreeCutStudioShell({
       <AlertDialog open={confirmCloseOpen} onOpenChange={setConfirmCloseOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved Studio changes</AlertDialogTitle>
+            <AlertDialogTitle>{t('hyperframes.studio.unsavedTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Save or discard the current HyperFrames edits before returning to FreeCut.
+              {t('hyperframes.studio.unsavedDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+            <AlertDialogCancel>{t('hyperframes.studio.keepEditing')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDiscardAndClose}
             >
-              Discard Changes
+              {t('hyperframes.studio.discardChanges')}
             </AlertDialogAction>
             <AlertDialogAction onClick={() => void handleSaveAndClose()}>
-              Save and Close
+              {t('hyperframes.studio.saveAndClose')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

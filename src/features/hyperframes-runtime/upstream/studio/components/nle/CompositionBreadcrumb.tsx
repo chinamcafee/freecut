@@ -1,48 +1,50 @@
-import { ArrowLeft, CaretRight } from "../../freecut/PhosphorIconShim";
-import { trackStudioEvent } from "../../utils/studioTelemetry";
+import { ArrowLeft, CaretRight } from '../../freecut/PhosphorIconShim'
+import { useTranslation } from 'react-i18next'
+import { trackStudioEvent } from '../../utils/studioTelemetry'
 
 export interface CompositionLevel {
   /** Unique id — "master" or composition file path */
-  id: string;
+  id: string
   /** Display label — "Master" or filename without extension */
-  label: string;
+  label: string
   /** Preview URL for this composition level */
-  previewUrl: string;
+  previewUrl: string
 }
 
 interface CompositionBreadcrumbProps {
-  stack: CompositionLevel[];
-  onNavigate: (index: number) => void;
+  stack: CompositionLevel[]
+  onNavigate: (index: number) => void
 }
 
 export function CompositionBreadcrumb({ stack, onNavigate }: CompositionBreadcrumbProps) {
-  if (stack.length <= 1) return null;
+  const { t } = useTranslation()
+  if (stack.length <= 1) return null
 
   return (
     <nav
-      aria-label="Composition navigation"
+      aria-label={t('hyperframes.studio.compositionNavigation')}
       className="flex items-center gap-1 px-2 h-8 border-b border-neutral-800/50 bg-neutral-900/50 flex-shrink-0"
     >
       {/* Back button — always goes to parent */}
       <button
         type="button"
         onClick={() => {
-          trackStudioEvent("navigation", {
-            action: "back",
+          trackStudioEvent('navigation', {
+            action: 'back',
             target: stack[stack.length - 2]?.label,
-          });
-          onNavigate(stack.length - 2);
+          })
+          onNavigate(stack.length - 2)
         }}
         className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs text-neutral-400 hover:text-white hover:bg-neutral-800 active:scale-[0.98] transition-colors"
-        title="Back (Esc, or double-click empty timeline)"
-        aria-label="Back to parent composition"
+        title={t('hyperframes.studio.backHint')}
+        aria-label={t('hyperframes.studio.backToParent')}
       >
         <ArrowLeft size={12} weight="bold" />
       </button>
 
       {/* Breadcrumb path */}
       {stack.map((level, i) => {
-        const isLast = i === stack.length - 1;
+        const isLast = i === stack.length - 1
         return (
           <span key={level.id} className="flex items-center gap-1">
             {i > 0 && <CaretRight size={10} className="text-neutral-600 flex-shrink-0" />}
@@ -52,8 +54,8 @@ export function CompositionBreadcrumb({ stack, onNavigate }: CompositionBreadcru
               <button
                 type="button"
                 onClick={() => {
-                  trackStudioEvent("navigation", { action: "breadcrumb", target: level.label });
-                  onNavigate(i);
+                  trackStudioEvent('navigation', { action: 'breadcrumb', target: level.label })
+                  onNavigate(i)
                 }}
                 className="text-xs text-neutral-500 hover:text-neutral-200 transition-colors"
               >
@@ -61,8 +63,8 @@ export function CompositionBreadcrumb({ stack, onNavigate }: CompositionBreadcru
               </button>
             )}
           </span>
-        );
+        )
       })}
     </nav>
-  );
+  )
 }

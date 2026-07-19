@@ -6,6 +6,8 @@
  */
 import { describe, it, expect, beforeEach } from 'vite-plus/test'
 import { i18n, changeAppLanguage, loadLanguageResources } from './index'
+import hyperframesEn from './locales/partials/en/hyperframes.json'
+import hyperframesZh from './locales/partials/zh/hyperframes.json'
 
 // A key that lives only in partials (not in the base locale files), so it
 // exercises the partial-merge path for every language tested.
@@ -44,7 +46,7 @@ describe('lazy locale loading', () => {
     expect(i18n.t(PARTIAL_ONLY_KEY)).toBe(DE_VALUE)
   })
 
-  it('test 5: structural parity — every language dir has the same partial files as en', async () => {
+  it('test 5: shared partials have structural parity across every language', async () => {
     const allModules = import.meta.glob('./locales/partials/*/*.json')
     const paths = Object.keys(allModules)
 
@@ -54,13 +56,43 @@ describe('lazy locale loading', () => {
     }
 
     const enFiles = filesForLang('en')
-    expect(enFiles.size).toBeGreaterThan(0)
+    const englishFallbackOnlyFiles = new Set(['hyperframes.json'])
+    const sharedEnFiles = new Set(
+      [...enFiles].filter((file) => !englishFallbackOnlyFiles.has(file)),
+    )
+    expect(sharedEnFiles.size).toBeGreaterThan(0)
 
     const langs = ['es', 'fr', 'de', 'pt-BR', 'tr', 'ja', 'ko', 'zh']
     for (const lang of langs) {
-      const langFiles = filesForLang(lang)
-      expect(langFiles, `${lang} should have the same partial files as en`).toEqual(enFiles)
+      const langFiles = new Set(
+        [...filesForLang(lang)].filter((file) => !englishFallbackOnlyFiles.has(file)),
+      )
+      expect(langFiles, `${lang} should have the same shared partial files as en`).toEqual(
+        sharedEnFiles,
+      )
     }
+  })
+
+  it('HyperFrames switches between English and Chinese and falls back to English', async () => {
+    await changeAppLanguage('en')
+    expect(i18n.t('hyperframes.generate.title')).toBe('HyperFrames Generate')
+
+    await changeAppLanguage('zh')
+    expect(i18n.t('hyperframes.generate.title')).toBe('HyperFrames 生成')
+
+    await changeAppLanguage('de')
+    expect(i18n.t('hyperframes.generate.title')).toBe('HyperFrames Generate')
+  })
+
+  it('HyperFrames English and Chinese resources have matching leaf keys', () => {
+    function leafKeys(value: unknown, prefix = ''): string[] {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return [prefix]
+      return Object.entries(value).flatMap(([key, child]) =>
+        leafKeys(child, prefix ? `${prefix}.${key}` : key),
+      )
+    }
+
+    expect(leafKeys(hyperframesZh).sort()).toEqual(leafKeys(hyperframesEn).sort())
   })
 
   it('loadLanguageResources resolves for en without doing extra work', async () => {

@@ -5,6 +5,7 @@ import {
   VOLUME_LOW_ICON,
   VOLUME_MUTED_ICON,
 } from "./styles.js";
+import i18n from "@/i18n";
 
 export interface ControlsCallbacks {
   onPlay: () => void;
@@ -81,7 +82,7 @@ export function createControls(
   // between them (see styles.ts) instead of swapping innerHTML, which would kill
   // the transition.
   playBtn.innerHTML = `<span class="hfp-ico hfp-ico-play">${PLAY_ICON}</span><span class="hfp-ico hfp-ico-pause">${PAUSE_ICON}</span>`;
-  playBtn.setAttribute("aria-label", "Play");
+  playBtn.setAttribute("aria-label", i18n.t("hyperframes.player.play"));
 
   const scrubber = document.createElement("div");
   scrubber.className = "hfp-scrubber";
@@ -101,7 +102,7 @@ export function createControls(
   speedBtn.className = "hfp-speed-btn";
   speedBtn.type = "button";
   speedBtn.textContent = "1x";
-  speedBtn.setAttribute("aria-label", "Playback speed");
+  speedBtn.setAttribute("aria-label", i18n.t("hyperframes.player.playbackSpeed"));
 
   const speedMenu = document.createElement("div");
   speedMenu.className = "hfp-speed-menu";
@@ -127,7 +128,7 @@ export function createControls(
   muteBtn.className = "hfp-mute-btn";
   muteBtn.type = "button";
   muteBtn.innerHTML = VOLUME_HIGH_ICON;
-  muteBtn.setAttribute("aria-label", "Mute");
+  muteBtn.setAttribute("aria-label", i18n.t("hyperframes.player.mute"));
 
   const volumeSliderWrap = document.createElement("div");
   volumeSliderWrap.className = "hfp-volume-slider-wrap";
@@ -135,7 +136,7 @@ export function createControls(
   const volumeSlider = document.createElement("div");
   volumeSlider.className = "hfp-volume-slider";
   volumeSlider.setAttribute("role", "slider");
-  volumeSlider.setAttribute("aria-label", "Volume");
+  volumeSlider.setAttribute("aria-label", i18n.t("hyperframes.player.volume"));
   volumeSlider.setAttribute("aria-valuemin", "0");
   volumeSlider.setAttribute("aria-valuemax", "100");
   volumeSlider.setAttribute("aria-valuenow", "100");
@@ -167,6 +168,20 @@ export function createControls(
   let hideTimeout: ReturnType<typeof setTimeout> | null = null;
   let speedIndex = presets.indexOf(1); // start at 1x
   if (speedIndex === -1) speedIndex = 0;
+
+  const updateLocalizedLabels = () => {
+    playBtn.setAttribute(
+      "aria-label",
+      i18n.t(isPlaying ? "hyperframes.player.pause" : "hyperframes.player.play"),
+    );
+    speedBtn.setAttribute("aria-label", i18n.t("hyperframes.player.playbackSpeed"));
+    muteBtn.setAttribute(
+      "aria-label",
+      i18n.t(isMuted ? "hyperframes.player.unmute" : "hyperframes.player.mute"),
+    );
+    volumeSlider.setAttribute("aria-label", i18n.t("hyperframes.player.volume"));
+  };
+  i18n.on("languageChanged", updateLocalizedLabels);
 
   const getVolumeIcon = (muted: boolean, volume: number): string => {
     if (muted) return VOLUME_MUTED_ICON;
@@ -366,7 +381,10 @@ export function createControls(
     updatePlaying(playing: boolean) {
       isPlaying = playing;
       playBtn.classList.toggle("hfp-playing", playing);
-      playBtn.setAttribute("aria-label", playing ? "Pause" : "Play");
+      playBtn.setAttribute(
+        "aria-label",
+        i18n.t(playing ? "hyperframes.player.pause" : "hyperframes.player.play"),
+      );
       if (playing) startHideTimer();
       else controls.classList.remove("hfp-hidden");
     },
@@ -379,7 +397,10 @@ export function createControls(
     updateMuted(muted: boolean) {
       isMuted = muted;
       muteBtn.innerHTML = getVolumeIcon(muted, currentVolume);
-      muteBtn.setAttribute("aria-label", muted ? "Unmute" : "Mute");
+      muteBtn.setAttribute(
+        "aria-label",
+        i18n.t(muted ? "hyperframes.player.unmute" : "hyperframes.player.mute"),
+      );
     },
     updateVolume(volume: number) {
       currentVolume = volume;
@@ -408,6 +429,7 @@ export function createControls(
       document.removeEventListener("click", onDocClick);
       host.removeEventListener("mousemove", onHostMouseMove);
       host.removeEventListener("mouseleave", onHostMouseLeave);
+      i18n.off("languageChanged", updateLocalizedLabels);
       if (hideTimeout) clearTimeout(hideTimeout);
       controls.remove();
     },

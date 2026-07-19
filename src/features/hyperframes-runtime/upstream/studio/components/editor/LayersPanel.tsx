@@ -1,4 +1,5 @@
 import { memo, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   buildInlineStylePatch,
   buildManualMovePatch,
@@ -30,17 +31,22 @@ export const LayersPanel = memo(function LayersPanel({
   onPatchLayer,
   onUndo,
 }: LayersPanelProps) {
+  const { t } = useTranslation()
   const sortedLayers = useMemo(() => sortLayersByVisualStack(layers), [layers])
   const selected = sortedLayers.find((layer) => layer.key === selectedLayerKey) ?? null
   const [property, setProperty] = useState('opacity')
   const [value, setValue] = useState('0.85')
-  const [textValue, setTextValue] = useState('Updated text')
+  const [textValue, setTextValue] = useState(() => t('hyperframes.studio.updatedText'))
 
   return (
     <aside className="flex h-full min-h-0 flex-col bg-neutral-950 text-neutral-200">
       <header className="border-b border-neutral-800 px-4 py-3">
-        <div className="text-xs uppercase tracking-wide text-neutral-500">Layers</div>
-        <div className="mt-1 text-sm font-medium">{layers.length} editable elements</div>
+        <div className="text-xs uppercase tracking-wide text-neutral-500">
+          {t('hyperframes.studio.layers')}
+        </div>
+        <div className="mt-1 text-sm font-medium">
+          {t('hyperframes.studio.editableElements', { count: layers.length })}
+        </div>
       </header>
       <div className="min-h-0 flex-1 overflow-auto">
         {sortedLayers.map((layer) => (
@@ -61,14 +67,14 @@ export const LayersPanel = memo(function LayersPanel({
       </div>
       <section className="border-t border-neutral-800 px-4 py-3 text-xs">
         <div className="mb-2 flex items-center justify-between">
-          <span className="font-medium text-neutral-200">Patch</span>
+          <span className="font-medium text-neutral-200">{t('hyperframes.studio.patch')}</span>
           <button
             type="button"
             className="rounded border border-neutral-700 px-2 py-1 text-neutral-200 disabled:opacity-40"
             disabled={!canUndo}
             onClick={onUndo}
           >
-            Undo
+            {t('hyperframes.studio.undo')}
           </button>
         </div>
         <div className="space-y-2">
@@ -76,13 +82,13 @@ export const LayersPanel = memo(function LayersPanel({
             className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100"
             value={property}
             onChange={(event) => setProperty(event.target.value)}
-            aria-label="Style property"
+            aria-label={t('hyperframes.studio.styleProperty')}
           />
           <input
             className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100"
             value={value}
             onChange={(event) => setValue(event.target.value)}
-            aria-label="Style value"
+            aria-label={t('hyperframes.studio.styleValue')}
           />
           <button
             type="button"
@@ -97,7 +103,7 @@ export const LayersPanel = memo(function LayersPanel({
               )
             }
           >
-            Apply Style
+            {t('hyperframes.studio.applyStyle')}
           </button>
           <button
             type="button"
@@ -107,7 +113,7 @@ export const LayersPanel = memo(function LayersPanel({
               selected && onPatchLayer?.(selected, buildManualMovePatch(12, 8), 'Manual move')
             }
           >
-            Nudge 12,8
+            {t('hyperframes.studio.nudge')}
           </button>
           <button
             type="button"
@@ -125,13 +131,13 @@ export const LayersPanel = memo(function LayersPanel({
               )
             }
           >
-            Add Motion Path
+            {t('hyperframes.studio.addMotionPath')}
           </button>
           <input
             className="w-full rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-neutral-100"
             value={textValue}
             onChange={(event) => setTextValue(event.target.value)}
-            aria-label="Text content"
+            aria-label={t('hyperframes.studio.textContent')}
           />
           <button
             type="button"
@@ -141,7 +147,7 @@ export const LayersPanel = memo(function LayersPanel({
               selected && onPatchLayer?.(selected, [buildTextContentPatch(textValue)], 'Text patch')
             }
           >
-            Apply Text
+            {t('hyperframes.studio.applyText')}
           </button>
         </div>
       </section>

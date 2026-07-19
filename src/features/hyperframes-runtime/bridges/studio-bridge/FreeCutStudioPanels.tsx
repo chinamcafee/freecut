@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { DomEditOverlay } from '@/features/hyperframes-runtime/upstream/studio/components/editor/DomEditOverlay'
 import { FileTree } from '@/features/hyperframes-runtime/upstream/studio/components/editor/FileTree'
 import { LayersPanel } from '@/features/hyperframes-runtime/upstream/studio/components/editor/LayersPanel'
@@ -62,6 +63,7 @@ export const FreeCutStudioPanels = memo(function FreeCutStudioPanels({
   onSelectFile,
   onActiveContentChange,
 }: FreeCutStudioPanelsProps) {
+  const { t } = useTranslation()
   const diagnosticsByFile = groupDiagnosticsByFile(session)
   const layers = useMemo(
     () => extractDomEditLayers(session.activeContent, session.activeFilePath),
@@ -192,8 +194,12 @@ export const FreeCutStudioPanels = memo(function FreeCutStudioPanels({
       timeline={
         <div className="flex h-full min-h-0 items-center justify-between gap-4 px-4 text-xs text-neutral-400">
           <div className="min-w-0 truncate">
-            {session.manifest.canvas.width}x{session.manifest.canvas.height} /{' '}
-            {session.manifest.canvas.fps} fps / {session.manifest.canvas.durationInFrames} frames
+            {t('hyperframes.studio.timelineSummary', {
+              width: session.manifest.canvas.width,
+              height: session.manifest.canvas.height,
+              fps: session.manifest.canvas.fps,
+              frames: session.manifest.canvas.durationInFrames,
+            })}
           </div>
           <div className="font-mono tabular-nums text-neutral-500">
             {player.currentTime.toFixed(2)}s

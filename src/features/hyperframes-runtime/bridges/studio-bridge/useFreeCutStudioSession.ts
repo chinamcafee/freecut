@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { HyperFramesProjectRepository } from '@/features/hyperframes-runtime/adapters/freecut-project/project-repository'
 import type { HyperFramesProjectFile, HyperFramesProjectManifest } from '@/types/hyperframes'
 import {
@@ -124,6 +125,7 @@ export function useFreeCutStudioSession({
   adapterFactory,
   repositoryFactory,
 }: UseFreeCutStudioSessionOptions): FreeCutStudioSession {
+  const { t } = useTranslation()
   const [state, setState] = useState<FreeCutStudioSessionState>({ status: 'idle' })
   const adapterFactoryRef = useRef(adapterFactory)
   const repositoryFactoryRef = useRef(repositoryFactory)
@@ -157,7 +159,7 @@ export function useFreeCutStudioSession({
         setState({
           status: 'error',
           hyperframesProjectId,
-          message: `HyperFrames project not found: ${hyperframesProjectId}`,
+          message: t('hyperframes.studio.projectNotFound', { projectId: hyperframesProjectId }),
         })
         return
       }
@@ -194,10 +196,10 @@ export function useFreeCutStudioSession({
       setState({
         status: 'error',
         hyperframesProjectId,
-        message: error instanceof Error ? error.message : 'Failed to load HyperFrames Studio.',
+        message: error instanceof Error ? error.message : t('hyperframes.studio.loadFailed'),
       })
     }
-  }, [createAdapter, freecutProjectId, hyperframesProjectId, resolvedItem])
+  }, [createAdapter, freecutProjectId, hyperframesProjectId, resolvedItem, t])
 
   useEffect(() => {
     void load()
@@ -332,7 +334,8 @@ export function useFreeCutStudioSession({
                 source: 'storage',
                 stage: 'studio-save',
                 severity: 'blocking',
-                message: error instanceof Error ? error.message : 'Failed to save Studio files.',
+                message:
+                  error instanceof Error ? error.message : t('hyperframes.studio.saveFailed'),
               },
             ],
           },
@@ -341,7 +344,7 @@ export function useFreeCutStudioSession({
       })
       return false
     }
-  }, [createAdapter, freecutProjectId, state])
+  }, [createAdapter, freecutProjectId, state, t])
 
   return {
     state,

@@ -9,14 +9,6 @@ export const SHADER_LOADING_ATTR = "shader-loading";
 const SHADER_CAPTURE_SCALE_PARAM = "__hf_shader_capture_scale";
 const SHADER_LOADING_PARAM = "__hf_shader_loading";
 
-export const SHADER_LOADING_PHRASES = [
-  "Preparing scene transitions",
-  "Sampling outgoing scene motion",
-  "Sampling incoming scene motion",
-  "Caching transition frames",
-  "Finalizing transition preview",
-];
-
 export type ShaderLoadingMode = "composition" | "player" | "none";
 
 export interface ShaderTransitionState {

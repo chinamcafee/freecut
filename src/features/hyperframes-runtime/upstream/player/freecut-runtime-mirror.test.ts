@@ -1,5 +1,7 @@
 import { runtimeProtocolMetadata } from '../core/runtime/protocol.js'
+import { changeAppLanguage } from '@/i18n'
 import { CompositionProbe, readCompositionSizeFromDocument } from './composition-probe.js'
+import { createControls } from './controls.js'
 import { DirectTimelineClock } from './direct-timeline-clock.js'
 import {
   createCompositionIframe,
@@ -29,10 +31,37 @@ function createParentMediaManager(overrides: Partial<ConstructorParameters<typeo
 }
 
 describe('HyperFrames player runtime mirror', () => {
-  afterEach(() => {
+  afterEach(async () => {
+    await changeAppLanguage('en')
     document.body.innerHTML = ''
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
+  })
+
+  it('keeps imperative player controls synchronized with the FreeCut language', async () => {
+    const parent = document.createElement('div')
+    document.body.appendChild(parent)
+    const controls = createControls(parent, {
+      onPlay: vi.fn(),
+      onPause: vi.fn(),
+      onSeek: vi.fn(),
+      onSpeedChange: vi.fn(),
+      onMuteToggle: vi.fn(),
+      onVolumeChange: vi.fn(),
+    })
+
+    await changeAppLanguage('zh')
+    expect(parent.querySelector('.hfp-play-btn')).toHaveAttribute('aria-label', '播放')
+    expect(parent.querySelector('.hfp-speed-btn')).toHaveAttribute('aria-label', '播放速度')
+    expect(parent.querySelector('.hfp-mute-btn')).toHaveAttribute('aria-label', '静音')
+
+    controls.updatePlaying(true)
+    expect(parent.querySelector('.hfp-play-btn')).toHaveAttribute('aria-label', '暂停')
+
+    await changeAppLanguage('de')
+    expect(parent.querySelector('.hfp-play-btn')).toHaveAttribute('aria-label', 'Pause')
+    expect(parent.querySelector('.hfp-speed-btn')).toHaveAttribute('aria-label', 'Playback speed')
+    controls.destroy()
   })
 
   it('registers the mirrored web component and creates the composition iframe shell', () => {

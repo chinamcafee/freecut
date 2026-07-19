@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loader2, Pause, Play, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -29,6 +30,7 @@ export const FreeCutStudioToolbar = memo(function FreeCutStudioToolbar({
   onSave,
   onClose,
 }: FreeCutStudioToolbarProps) {
+  const { t } = useTranslation()
   return (
     <div className="flex h-12 items-center gap-3 border-b border-neutral-800 bg-neutral-950 px-3 text-neutral-100">
       <div className="min-w-0 flex-1">
@@ -36,12 +38,12 @@ export const FreeCutStudioToolbar = memo(function FreeCutStudioToolbar({
           <div className="truncate text-sm font-semibold">{title}</div>
           {dirty && (
             <span className="shrink-0 rounded border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-amber-200">
-              Dirty {dirtyCount}
+              {t('hyperframes.studio.dirty', { count: dirtyCount })}
             </span>
           )}
           {diagnosticsCount > 0 && (
             <span className="shrink-0 rounded border border-red-400/30 bg-red-400/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-200">
-              {diagnosticsCount} diagnostics
+              {t('hyperframes.studio.diagnostics', { count: diagnosticsCount })}
             </span>
           )}
         </div>
@@ -56,7 +58,9 @@ export const FreeCutStudioToolbar = memo(function FreeCutStudioToolbar({
         size="icon"
         className="h-8 w-8 text-neutral-300 hover:bg-neutral-800 hover:text-white"
         onClick={onTogglePlay}
-        aria-label={isPlaying ? 'Pause Studio preview' : 'Play Studio preview'}
+        aria-label={
+          isPlaying ? t('hyperframes.studio.pausePreview') : t('hyperframes.studio.playPreview')
+        }
       >
         {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
       </Button>
@@ -73,7 +77,7 @@ export const FreeCutStudioToolbar = memo(function FreeCutStudioToolbar({
         ) : (
           <Save className="h-3.5 w-3.5" />
         )}
-        Save
+        {t('hyperframes.common.save')}
       </Button>
       <Button
         type="button"
@@ -81,7 +85,7 @@ export const FreeCutStudioToolbar = memo(function FreeCutStudioToolbar({
         size="icon"
         className="h-8 w-8 text-neutral-300 hover:bg-neutral-800 hover:text-white"
         onClick={onClose}
-        aria-label="Close Studio"
+        aria-label={t('hyperframes.studio.close')}
       >
         <X className="h-4 w-4" />
       </Button>

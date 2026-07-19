@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface SourceEditorProps {
   content: string
@@ -27,6 +28,7 @@ export const SourceEditor = memo(function SourceEditor({
   readOnly = false,
   revealOffset,
 }: SourceEditorProps) {
+  const { t } = useTranslation()
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null)
   const resolvedLanguage = detectLanguage(filePath, language)
 
@@ -41,7 +43,11 @@ export const SourceEditor = memo(function SourceEditor({
   return (
     <textarea
       ref={textAreaRef}
-      aria-label={filePath ? `Source editor: ${filePath}` : 'Source editor'}
+      aria-label={
+        filePath
+          ? t('hyperframes.studio.sourceEditorFile', { file: filePath })
+          : t('hyperframes.studio.sourceEditor')
+      }
       data-hf-source-editor-language={resolvedLanguage}
       className="h-full w-full resize-none border-0 bg-neutral-950 p-3 font-mono text-xs leading-5 text-neutral-100 outline-none"
       value={content}

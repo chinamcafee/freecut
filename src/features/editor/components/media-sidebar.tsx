@@ -570,7 +570,7 @@ export const MediaSidebar = memo(function MediaSidebar() {
     { id: 'transitions' as const, icon: Blend, label: t('editor.mediaSidebar.transitions') },
     { id: 'transcript' as const, icon: Captions, label: t('transcript.tabLabel') },
     { id: 'ai' as const, icon: WandSparkles, label: t('editor.mediaSidebar.ai') },
-    { id: 'hyperframes' as const, icon: Boxes, label: 'HyperFrames Projects' },
+    { id: 'hyperframes' as const, icon: Boxes, label: t('hyperframes.sidebar.projects') },
   ]
 
   const shouldSuppressGeneratedItemClick = useCallback(() => {

@@ -3,6 +3,7 @@ import {
   resolveSlideshow,
   type ResolvedSlideshow,
 } from "../../core/slideshow/index.js";
+import i18n from "@/i18n";
 import { SlideshowController, type PlayerPort } from "./SlideshowController.js";
 import {
   SlideshowChannel,
@@ -257,6 +258,7 @@ export class HyperframesSlideshow extends HTMLElement {
     this.addEventListener("touchend", this.onTouchEnd);
     window.addEventListener("message", this.onMessage);
     document.addEventListener("fullscreenchange", this.onFsChange);
+    i18n.on("languageChanged", this.onLanguageChanged);
     this.initChannel();
     this.observeInteractivePlayers();
     // Defer player-dependent init to a macrotask so that child elements are
@@ -290,6 +292,7 @@ export class HyperframesSlideshow extends HTMLElement {
     this.removeEventListener("touchend", this.onTouchEnd);
     window.removeEventListener("message", this.onMessage);
     document.removeEventListener("fullscreenchange", this.onFsChange);
+    i18n.off("languageChanged", this.onLanguageChanged);
     this.offChange?.();
     this.offChange = null;
     this.controller?.dispose?.();
@@ -803,7 +806,7 @@ export class HyperframesSlideshow extends HTMLElement {
     if (this.resolveMode() !== "audience" || this.audienceMediaUnlockButton) return;
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = "Play audience media muted";
+    button.textContent = i18n.t("hyperframes.player.slideshow.playAudienceMediaMuted");
     button.style.cssText =
       "position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:100000;border:0;border-radius:999px;padding:12px 18px;background:#fff;color:#111827;box-shadow:0 10px 32px rgba(0,0,0,.28);font:700 14px/1 system-ui,sans-serif;cursor:pointer;pointer-events:auto;";
     button.addEventListener("click", this.retryBlockedAudienceMedia);
@@ -952,6 +955,15 @@ export class HyperframesSlideshow extends HTMLElement {
     this.paintChrome(hotspotsHtml + this.buildNavCluster(counter, "28px"));
   }
 
+  private onLanguageChanged = (): void => {
+    if (this.audienceMediaUnlockButton) {
+      this.audienceMediaUnlockButton.textContent = i18n.t(
+        "hyperframes.player.slideshow.playAudienceMediaMuted",
+      );
+    }
+    if (this.controller) this.render();
+  };
+
   /** Ensure the overlay chrome layer exists, set its content, and wire its buttons. */
   private paintChrome(html: string): void {
     injectKeyframesOnce(); // nav-button :hover + hotspot keyframes (CSP-safe, once per doc)
@@ -980,6 +992,9 @@ export class HyperframesSlideshow extends HTMLElement {
     const showNext = options.canNext ?? c?.canNext ?? true;
     const showLoading = options.loading === true && showNext;
     const showSound = this.hasAttribute("sound");
+    const muteLabel = i18n.t(
+      this._muted ? "hyperframes.player.unmute" : "hyperframes.player.mute",
+    );
     const btnStyle =
       "display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:transparent;border:none;border-radius:999px;color:rgba(255,255,255,0.85);font-size:16px;cursor:pointer;transition:background 0.15s,color 0.15s;padding:0;";
     const speakerSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
@@ -988,9 +1003,9 @@ export class HyperframesSlideshow extends HTMLElement {
       ? `<button
           data-hf-mute
           type="button"
-          aria-label="${this._muted ? "Unmute" : "Mute"}"
-          title="${this._muted ? "Unmute" : "Mute"}"
-          data-hf-tooltip="${this._muted ? "Unmute" : "Mute"}"
+          aria-label="${muteLabel}"
+          title="${muteLabel}"
+          data-hf-tooltip="${muteLabel}"
           aria-pressed="${this._muted ? "true" : "false"}"
           style="${btnStyle}${this._muted ? "color:rgba(255,255,255,0.45);" : ""}"
         >${this._muted ? speakerMutedSvg : speakerSvg}</button>`
@@ -999,17 +1014,17 @@ export class HyperframesSlideshow extends HTMLElement {
       ? `<button
           data-hf-prev
           type="button"
-          aria-label="Previous slide"
-          title="Previous slide"
-          data-hf-tooltip="Previous slide"
+          aria-label="${i18n.t("hyperframes.player.slideshow.previousSlide")}"
+          title="${i18n.t("hyperframes.player.slideshow.previousSlide")}"
+          data-hf-tooltip="${i18n.t("hyperframes.player.slideshow.previousSlide")}"
           style="${btnStyle}"        >&#8249;</button>`
       : "";
     const loadingHtml = showLoading
       ? `<span
           data-hf-nav-loading
           role="status"
-          aria-label="Loading slides"
-          title="Loading slides"
+          aria-label="${i18n.t("hyperframes.player.slideshow.loadingSlides")}"
+          title="${i18n.t("hyperframes.player.slideshow.loadingSlides")}"
           style="${btnStyle}cursor:progress;color:rgba(255,255,255,0.72);"
         ><span class="hf-nav-spinner" aria-hidden="true" style="width:14px;height:14px;border:2px solid rgba(255,255,255,0.32);border-top-color:rgba(255,255,255,0.92);border-radius:999px;animation:hf-nav-spin 0.8s linear infinite;"></span></span>`
       : "";
@@ -1019,22 +1034,26 @@ export class HyperframesSlideshow extends HTMLElement {
         ? `<button
           data-hf-next
           type="button"
-          aria-label="Next slide"
-          title="Next slide"
-          data-hf-tooltip="Next slide"
+          aria-label="${i18n.t("hyperframes.player.slideshow.nextSlide")}"
+          title="${i18n.t("hyperframes.player.slideshow.nextSlide")}"
+          data-hf-tooltip="${i18n.t("hyperframes.player.slideshow.nextSlide")}"
           style="${btnStyle}"        >&#8250;</button>`
         : "";
     const presentBtnHtml = this.shouldShowPresentControl()
       ? `<button
           data-hf-present
           type="button"
-          aria-label="Present"
-          title="Present"
-          data-hf-tooltip="Present"
+          aria-label="${i18n.t("hyperframes.player.slideshow.present")}"
+          title="${i18n.t("hyperframes.player.slideshow.present")}"
+          data-hf-tooltip="${i18n.t("hyperframes.player.slideshow.present")}"
           style="${btnStyle}"        >${PRESENT_SVG}</button>`
       : "";
     const isFs = document.fullscreenElement === this;
-    const fsLabel = isFs ? "Exit full screen" : "Full screen";
+    const fsLabel = i18n.t(
+      isFs
+        ? "hyperframes.player.slideshow.exitFullScreen"
+        : "hyperframes.player.slideshow.fullScreen",
+    );
     const fsBtnHtml = `<button
           data-hf-fullscreen
           type="button"
@@ -1063,7 +1082,7 @@ export class HyperframesSlideshow extends HTMLElement {
         ${prevBtnHtml}
         <span
           data-hf-counter
-          aria-label="Slide ${counter.index} of ${counter.total}"
+          aria-label="${i18n.t("hyperframes.player.slideshow.slideCounter", { current: counter.index, total: counter.total })}"
           style="min-width:46px;text-align:center;color:rgba(255,255,255,0.9);font-family:${COUNTER_FONT_FAMILY};font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0;padding:0 ${counterPadRight} 0 ${counterPadLeft};user-select:none;"
         >${counter.index}&thinsp;/&thinsp;${counter.total}</span>
         ${nextBtnHtml}
@@ -1112,7 +1131,11 @@ export class HyperframesSlideshow extends HTMLElement {
     if (!btn) return;
     const isFs = document.fullscreenElement === this;
     btn.innerHTML = isFs ? EXIT_FS_SVG : ENTER_FS_SVG;
-    const label = isFs ? "Exit full screen" : "Full screen";
+    const label = i18n.t(
+      isFs
+        ? "hyperframes.player.slideshow.exitFullScreen"
+        : "hyperframes.player.slideshow.fullScreen",
+    );
     btn.setAttribute("aria-label", label);
     btn.setAttribute("title", label);
     btn.setAttribute("data-hf-tooltip", label);

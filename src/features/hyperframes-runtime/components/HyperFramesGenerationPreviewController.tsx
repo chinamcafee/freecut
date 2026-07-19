@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { HyperFramesGenerationImportStrategy } from '../bridges/skills-bridge'
 import {
@@ -8,6 +9,7 @@ import {
 import { HyperFramesGenerationPreviewDrawer } from './HyperFramesGenerationPreviewDrawer'
 
 export function HyperFramesGenerationPreviewController() {
+  const { t } = useTranslation()
   const [request, setRequest] = useState<HyperFramesGenerationPreviewRequest>()
   const [confirming, setConfirming] = useState(false)
 
@@ -26,9 +28,11 @@ export function HyperFramesGenerationPreviewController() {
     try {
       await request.onDiscard?.(request.preview)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to discard generated output')
+      toast.error(
+        error instanceof Error ? error.message : t('hyperframes.generationPreview.discardFailed'),
+      )
     }
-  }, [request])
+  }, [request, t])
 
   const changeStrategy = useCallback(
     (strategy: HyperFramesGenerationImportStrategy) => {
@@ -47,11 +51,13 @@ export function HyperFramesGenerationPreviewController() {
       await request.onConfirm(request.preview)
       setRequest(undefined)
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to import generated output')
+      toast.error(
+        error instanceof Error ? error.message : t('hyperframes.generationPreview.importFailed'),
+      )
     } finally {
       setConfirming(false)
     }
-  }, [confirming, request])
+  }, [confirming, request, t])
 
   if (!request) return null
 

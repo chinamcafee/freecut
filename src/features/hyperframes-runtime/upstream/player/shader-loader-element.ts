@@ -7,13 +7,14 @@
  * the shadow DOM on every state change.
  */
 
-import { SHADER_LOADING_PHRASES } from "./shader-options.js";
+import i18n from "@/i18n";
 
 export interface ShaderLoaderElements {
   root: HTMLDivElement;
   fill: HTMLDivElement;
   title: HTMLSpanElement;
   detail: HTMLDivElement;
+  transitionLabel: HTMLSpanElement;
   transitionValue: HTMLSpanElement;
   frameLabel: HTMLSpanElement;
   frameValue: HTMLSpanElement;
@@ -25,7 +26,7 @@ export function createShaderLoader(): ShaderLoaderElements {
   root.className = "hfp-shader-loader";
   root.setAttribute("role", "status");
   root.setAttribute("aria-live", "polite");
-  root.setAttribute("aria-label", "Preparing scene transitions");
+  root.setAttribute("aria-label", i18n.t("hyperframes.player.shader.preparing"));
   root.setAttribute("data-hyperframes-ignore", "");
   root.draggable = false;
 
@@ -74,12 +75,12 @@ export function createShaderLoader(): ShaderLoaderElements {
   titleContainer.className = "hfp-shader-loader-title";
   const titleText = document.createElement("span");
   titleText.className = "hfp-shader-loader-title-text";
-  titleText.textContent = SHADER_LOADING_PHRASES[0] || "Preparing scene transitions";
+  titleText.textContent = i18n.t("hyperframes.player.shader.preparing");
   titleContainer.appendChild(titleText);
 
   const detail = document.createElement("div");
   detail.className = "hfp-shader-loader-detail";
-  detail.textContent = "Rendering animated scene samples for shader transitions.";
+  detail.textContent = i18n.t("hyperframes.player.shader.renderingDetail");
 
   const track = document.createElement("div");
   track.className = "hfp-shader-loader-track";
@@ -103,8 +104,8 @@ export function createShaderLoader(): ShaderLoaderElements {
     progress.appendChild(row);
     return { row, label, value };
   };
-  const transitionStatus = createProgressRow("transition");
-  const frameStatus = createProgressRow("transition frame");
+  const transitionStatus = createProgressRow(i18n.t("hyperframes.player.shader.transition"));
+  const frameStatus = createProgressRow(i18n.t("hyperframes.player.shader.transitionFrame"));
 
   panel.appendChild(markFrame);
   panel.appendChild(titleContainer);
@@ -118,6 +119,7 @@ export function createShaderLoader(): ShaderLoaderElements {
     fill,
     title: titleText,
     detail,
+    transitionLabel: transitionStatus.label,
     transitionValue: transitionStatus.value,
     frameLabel: frameStatus.label,
     frameValue: frameStatus.value,

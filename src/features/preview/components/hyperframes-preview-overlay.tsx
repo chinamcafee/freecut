@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   HyperFramesPlayerHost,
   createPreviewDocument,
@@ -95,6 +96,7 @@ export const HyperFramesPreviewOverlay = memo(function HyperFramesPreviewOverlay
   repositoryFactory = DEFAULT_REPOSITORY_FACTORY,
   PlayerHostComponent = HyperFramesPlayerHost,
 }: HyperFramesPreviewOverlayProps) {
+  const { t } = useTranslation()
   const playerRef = useRef<HyperFramesPlayerHostHandle | null>(null)
   const [hostReady, setHostReady] = useState(false)
   const selectedItemIds = useSelectionStore((state) => state.selectedItemIds)
@@ -149,7 +151,9 @@ export const HyperFramesPreviewOverlay = memo(function HyperFramesPreviewOverlay
             diagnostic: createPreviewDiagnostic(
               target,
               'hyperframes.preview.manifest-missing',
-              `HyperFrames project manifest not found: ${target.projectId}`,
+              t('hyperframes.centralPreview.manifestMissing', {
+                projectId: target.projectId,
+              }),
             ),
           })
           return
@@ -161,7 +165,9 @@ export const HyperFramesPreviewOverlay = memo(function HyperFramesPreviewOverlay
             diagnostic: createPreviewDiagnostic(
               target,
               'hyperframes.preview.composition-missing',
-              `HyperFrames composition file not found: ${target.compositionPath}`,
+              t('hyperframes.centralPreview.compositionMissing', {
+                path: target.compositionPath,
+              }),
             ),
           })
           return
@@ -188,7 +194,7 @@ export const HyperFramesPreviewOverlay = memo(function HyperFramesPreviewOverlay
           diagnostic: createPreviewDiagnostic(
             target,
             'hyperframes.preview.load-failed',
-            error instanceof Error ? error.message : 'Failed to load HyperFrames preview.',
+            error instanceof Error ? error.message : t('hyperframes.centralPreview.loadFailed'),
           ),
         })
       }
@@ -198,7 +204,7 @@ export const HyperFramesPreviewOverlay = memo(function HyperFramesPreviewOverlay
     return () => {
       cancelled = true
     }
-  }, [currentProject, projectRevision, repositoryFactory, target])
+  }, [currentProject, projectRevision, repositoryFactory, t, target])
 
   const activeTarget = previewState.status === 'idle' ? null : previewState.target
   const sourceOffsetFrame = activeTarget?.item.sourceStart ?? 0
@@ -239,7 +245,7 @@ export const HyperFramesPreviewOverlay = memo(function HyperFramesPreviewOverlay
               diagnostic: createPreviewDiagnostic(
                 previewState.target,
                 'hyperframes.preview.message-rejected',
-                `HyperFrames preview message rejected: ${event.reason}`,
+                t('hyperframes.centralPreview.messageRejected', { reason: event.reason }),
               ),
             })
           }
@@ -251,7 +257,7 @@ export const HyperFramesPreviewOverlay = memo(function HyperFramesPreviewOverlay
   const message =
     previewState.status === 'diagnostic'
       ? previewState.diagnostic.message
-      : 'Loading HyperFrames preview...'
+      : t('hyperframes.centralPreview.loading')
 
   return (
     <div
@@ -260,7 +266,7 @@ export const HyperFramesPreviewOverlay = memo(function HyperFramesPreviewOverlay
       data-hf-preview-diagnostic={previewState.status === 'diagnostic' ? 'true' : undefined}
     >
       <div className="max-w-sm rounded border border-white/15 bg-black/60 px-4 py-3 shadow-lg">
-        <p className="text-sm font-semibold">HyperFrames preview unavailable</p>
+        <p className="text-sm font-semibold">{t('hyperframes.centralPreview.unavailable')}</p>
         <p className="mt-1 text-xs text-white/75">{message}</p>
       </div>
     </div>

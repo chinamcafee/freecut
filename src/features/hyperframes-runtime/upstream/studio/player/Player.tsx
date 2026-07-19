@@ -1,4 +1,5 @@
 import { forwardRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { CSSProperties } from 'react'
 
 export interface StudioPlayerProps {
@@ -29,11 +30,12 @@ export const Player = forwardRef<HTMLIFrameElement, StudioPlayerProps>(function 
   },
   ref,
 ) {
+  const { t } = useTranslation()
   const src = resolvePlayerSrc(projectId, directUrl)
   return (
     <iframe
       ref={ref}
-      title="HyperFrames Studio preview"
+      title={t('hyperframes.studio.iframeTitle')}
       src={src}
       className="h-full w-full border-0 bg-black"
       sandbox="allow-scripts allow-same-origin"

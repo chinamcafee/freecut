@@ -756,20 +756,33 @@ export const AiPanel = memo(function AiPanel() {
   const handleClearAll = () => clearGenerationList(setTtsGenerations)
   const handleRemoveGeneration = (id: string) => removeGenerationFromList(setTtsGenerations, id)
 
-  const handleHyperFramesPlanConfirmed = useCallback((plan: HyperFramesGenerationPlan) => {
-    const status = getHyperFramesModelStatus(useHyperFramesModelCenterStore.getState())
-    if (status.kind !== 'configured' && status.kind !== 'local') {
-      toast.error(status.label, {
-        description: `${status.detail}. Configure a model before running this plan.`,
+  const handleHyperFramesPlanConfirmed = useCallback(
+    (plan: HyperFramesGenerationPlan) => {
+      const settings = useHyperFramesModelCenterStore.getState()
+      const status = getHyperFramesModelStatus(settings)
+      if (status.kind !== 'configured' && status.kind !== 'local') {
+        const profile = settings.profiles[settings.activeProfileId]
+        const labelKey =
+          status.kind === 'offline' && (!profile || !profile.enabled)
+            ? 'hyperframes.modelStatus.unavailable'
+            : `hyperframes.modelStatus.${status.kind === 'missing-key' ? 'missingKey' : status.kind === 'quota-reached' ? 'quotaReached' : status.kind}`
+        const detail =
+          status.detail === 'No enabled model profile'
+            ? t('hyperframes.modelStatus.noEnabledProfile')
+            : status.detail
+        toast.error(t(labelKey), {
+          description: t('hyperframes.modelStatus.configureBeforePlan', { detail }),
+        })
+        openHyperFramesModelCenter()
+        return false
+      }
+      toast.success(t('hyperframes.generate.confirmedToast'), {
+        description: t('hyperframes.generate.confirmedDescription', { count: plan.steps.length }),
       })
-      openHyperFramesModelCenter()
-      return false
-    }
-    toast.success('HyperFrames generation plan confirmed', {
-      description: `${plan.steps.length} steps are ready for the configured executor.`,
-    })
-    return true
-  }, [])
+      return true
+    },
+    [t],
+  )
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-3">

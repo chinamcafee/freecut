@@ -395,6 +395,7 @@ function GradeActions({ t }: { t: ReturnType<typeof useTranslation>['t'] }) {
 }
 
 function HyperFramesActions({
+  t,
   isHyperFramesItem,
   onOpenStudio,
   onRerender,
@@ -406,12 +407,22 @@ function HyperFramesActions({
   if (!isHyperFramesItem) return null
   return (
     <>
-      <ContextMenuItem onClick={onOpenStudio}>Open HyperFrames Studio</ContextMenuItem>
-      <ContextMenuItem onClick={onRerender}>Rerender HyperFrames cache</ContextMenuItem>
-      <ContextMenuItem onClick={onRelinkProject}>Relink HyperFrames project</ContextMenuItem>
-      <ContextMenuItem onClick={onExportProject}>Export HyperFrames project</ContextMenuItem>
-      <ContextMenuItem onClick={onConvertToNative}>Convert to native items</ContextMenuItem>
-      <ContextMenuItem onClick={onViewSource}>View HyperFrames source</ContextMenuItem>
+      <ContextMenuItem onClick={onOpenStudio}>
+        {t('hyperframes.timeline.openStudio')}
+      </ContextMenuItem>
+      <ContextMenuItem onClick={onRerender}>{t('hyperframes.timeline.rerender')}</ContextMenuItem>
+      <ContextMenuItem onClick={onRelinkProject}>
+        {t('hyperframes.timeline.relink')}
+      </ContextMenuItem>
+      <ContextMenuItem onClick={onExportProject}>
+        {t('hyperframes.timeline.export')}
+      </ContextMenuItem>
+      <ContextMenuItem onClick={onConvertToNative}>
+        {t('hyperframes.timeline.convert')}
+      </ContextMenuItem>
+      <ContextMenuItem onClick={onViewSource}>
+        {t('hyperframes.timeline.viewSource')}
+      </ContextMenuItem>
       <ContextMenuSeparator />
     </>
   )

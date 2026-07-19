@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileCode2, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -39,10 +40,13 @@ function isHyperFramesItem(item: TimelineItem | undefined): item is CompositionI
 export function HyperFramesTimelineActionController({
   freecutProjectId,
 }: HyperFramesTimelineActionControllerProps) {
+  const { t } = useTranslation()
   const [relink, setRelink] = useState<RelinkState>()
 
   const findItem = useCallback((timelineItemId: string) => {
-    const item = useTimelineStore.getState().items.find((candidate) => candidate.id === timelineItemId)
+    const item = useTimelineStore
+      .getState()
+      .items.find((candidate) => candidate.id === timelineItemId)
     return isHyperFramesItem(item) ? item : undefined
   }, [])
 
@@ -50,7 +54,7 @@ export function HyperFramesTimelineActionController({
     async (request: HyperFramesTimelineActionRequest) => {
       const repository = createWorkspaceHyperFramesProjectRepository({ freecutProjectId })
       const directory = await repository.readProjectDirectory(request.hyperframesProjectId)
-      if (!directory) throw new Error('HyperFrames project directory not found')
+      if (!directory) throw new Error(t('hyperframes.timeline.directoryNotFound'))
       const bytes = packHyperFramesProjectDirectory(directory)
       const url = URL.createObjectURL(
         new Blob([bytes.buffer as ArrayBuffer], { type: 'application/zip' }),
@@ -60,21 +64,20 @@ export function HyperFramesTimelineActionController({
       anchor.download = `${request.hyperframesProjectId}.hyperframes.zip`
       anchor.click()
       URL.revokeObjectURL(url)
-      toast.success('HyperFrames project exported')
+      toast.success(t('hyperframes.timeline.projectExported'))
     },
-    [freecutProjectId],
+    [freecutProjectId, t],
   )
 
   const convertToNative = useCallback(
     async (request: HyperFramesTimelineActionRequest) => {
       const item = findItem(request.timelineItemId)
-      if (!item) throw new Error('HyperFrames timeline item not found')
+      if (!item) throw new Error(t('hyperframes.timeline.itemNotFound'))
       const repository = createWorkspaceHyperFramesProjectRepository({ freecutProjectId })
       const directory = await repository.readProjectDirectory(request.hyperframesProjectId)
-      if (!directory) throw new Error('HyperFrames project directory not found')
-      const { createEditableFreeCutApproximations } = await import(
-        '@/features/hyperframes-runtime/bridges/conversion-bridge/hyperFramesEditableApproximation'
-      )
+      if (!directory) throw new Error(t('hyperframes.timeline.directoryNotFound'))
+      const { createEditableFreeCutApproximations } =
+        await import('@/features/hyperframes-runtime/bridges/conversion-bridge/hyperFramesEditableApproximation')
       const result = createEditableFreeCutApproximations({
         directory,
         targetTrackId: item.trackId,
@@ -82,21 +85,20 @@ export function HyperFramesTimelineActionController({
         parentTimelineItemId: item.id,
       })
       if (result.items.length === 0) {
-        toast.info('No supported data-hf-item nodes were available for native conversion')
+        toast.info(t('hyperframes.timeline.noNativeNodes'))
         return
       }
       useTimelineStore.getState().addItems(result.items as TimelineItem[])
-      toast.success(
-        `Added ${result.items.length} native approximation${result.items.length === 1 ? '' : 's'}`,
-        {
-          description:
-            result.lossRecords.length > 0
-              ? `${result.lossRecords.length} conversion limitation${result.lossRecords.length === 1 ? '' : 's'} recorded`
-              : undefined,
-        },
-      )
+      toast.success(t('hyperframes.timeline.nativeAdded', { count: result.items.length }), {
+        description:
+          result.lossRecords.length > 0
+            ? t('hyperframes.timeline.limitationsRecorded', {
+                count: result.lossRecords.length,
+              })
+            : undefined,
+      })
     },
-    [findItem, freecutProjectId],
+    [findItem, freecutProjectId, t],
   )
 
   const openRelink = useCallback(
@@ -114,11 +116,12 @@ export function HyperFramesTimelineActionController({
           request,
           loading: false,
           manifests: [],
-          error: error instanceof Error ? error.message : 'Failed to load HyperFrames projects',
+          error:
+            error instanceof Error ? error.message : t('hyperframes.timeline.loadProjectsFailed'),
         })
       }
     },
-    [freecutProjectId],
+    [freecutProjectId, t],
   )
 
   const handleRequest = useCallback(
@@ -137,19 +140,19 @@ export function HyperFramesTimelineActionController({
           return
         }
         const item = findItem(request.timelineItemId)
-        if (!item) throw new Error('HyperFrames timeline item not found')
+        if (!item) throw new Error(t('hyperframes.timeline.itemNotFound'))
         if (request.action === 'view-source') {
           emitFreeCutStudioOpenRequest({ item: { ...item, sourceKind: 'hyperframes' } })
           return
         }
-        toast.error('HyperFrames Producer runtime is not configured', {
-          description: 'Configure the local Producer service before rerendering this project.',
+        toast.error(t('hyperframes.timeline.producerUnavailable'), {
+          description: t('hyperframes.timeline.producerUnavailableDescription'),
         })
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'HyperFrames action failed')
+        toast.error(error instanceof Error ? error.message : t('hyperframes.timeline.actionFailed'))
       }
     },
-    [convertToNative, exportProject, findItem, openRelink],
+    [convertToNative, exportProject, findItem, openRelink, t],
   )
 
   useEffect(
@@ -161,7 +164,7 @@ export function HyperFramesTimelineActionController({
     if (!relink) return
     const item = findItem(relink.request.timelineItemId)
     if (!item) {
-      toast.error('HyperFrames timeline item not found')
+      toast.error(t('hyperframes.timeline.itemNotFound'))
       return
     }
     const diagnostics = manifest.lintSummary?.diagnostics ?? manifest.diagnostics ?? []
@@ -182,29 +185,27 @@ export function HyperFramesTimelineActionController({
       },
     })
     setRelink(undefined)
-    toast.success(`Relinked to ${manifest.title}`)
+    toast.success(t('hyperframes.timeline.relinked', { title: manifest.title }))
   }
 
   return (
     <Dialog open={Boolean(relink)} onOpenChange={(open) => !open && setRelink(undefined)}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Relink HyperFrames project</DialogTitle>
-          <DialogDescription>
-            Choose another project directory for this timeline reference. Timeline position and
-            trim are preserved.
-          </DialogDescription>
+          <DialogTitle>{t('hyperframes.timeline.relink')}</DialogTitle>
+          <DialogDescription>{t('hyperframes.timeline.relinkDescription')}</DialogDescription>
         </DialogHeader>
         <div className="max-h-72 space-y-2 overflow-y-auto py-1">
           {relink?.loading && (
             <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading projects...
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {t('hyperframes.timeline.loadingProjects')}
             </div>
           )}
           {relink?.error && <p className="text-sm text-destructive">{relink.error}</p>}
           {relink && !relink.loading && !relink.error && relink.manifests.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No HyperFrames projects are available.
+              {t('hyperframes.timeline.noProjects')}
             </p>
           )}
           {relink?.manifests.map((manifest) => {
@@ -224,14 +225,18 @@ export function HyperFramesTimelineActionController({
                     {manifest.activeCompositionPath}
                   </span>
                 </span>
-                {current && <span className="text-xs text-muted-foreground">Current</span>}
+                {current && (
+                  <span className="text-xs text-muted-foreground">
+                    {t('hyperframes.common.current')}
+                  </span>
+                )}
               </button>
             )
           })}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setRelink(undefined)}>
-            Cancel
+            {t('hyperframes.common.cancel')}
           </Button>
         </DialogFooter>
       </DialogContent>
