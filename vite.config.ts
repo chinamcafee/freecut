@@ -13,6 +13,8 @@ const toolIgnorePatterns = [
   'tmp/**',
   'output/**',
   'scripts/**',
+  'src/features/hyperframes-runtime/upstream/skills/**',
+  'src/features/hyperframes-runtime/upstream/producer-node/**',
 ]
 
 // https://vite.dev/config/

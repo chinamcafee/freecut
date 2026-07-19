@@ -9,17 +9,22 @@ import { usePlaybackStore } from '@/shared/state/playback'
 import { HOTKEY_OPTIONS } from '@/config/hotkeys'
 import type { TimelineShortcutCallbacks } from '../use-timeline-shortcuts'
 import { useResolvedHotkeys, useSettingsStore } from '@/features/timeline/deps/settings'
+import { useEditorStore } from '@/shared/state/editor'
 
 export function useUIShortcuts(callbacks: TimelineShortcutCallbacks) {
   const hotkeys = useResolvedHotkeys()
   const toggleSnap = useTimelineStore((s) => s.toggleSnap)
   const zoomIn = useZoomStore((s) => s.zoomIn)
   const zoomOut = useZoomStore((s) => s.zoomOut)
+  const hyperFramesStudioShortcutScopeActive = useEditorStore(
+    (s) => s.hyperFramesStudioShortcutScopeActive,
+  )
 
   // History: Cmd/Ctrl+Z - Undo
   useHotkeys(
     hotkeys.UNDO,
     (event) => {
+      if (hyperFramesStudioShortcutScopeActive) return
       event.preventDefault()
       useTimelineStore.temporal.getState().undo()
       if (callbacks.onUndo) {
@@ -30,13 +35,14 @@ export function useUIShortcuts(callbacks: TimelineShortcutCallbacks) {
       ...HOTKEY_OPTIONS,
       enableOnFormTags: true,
     },
-    [callbacks],
+    [callbacks, hyperFramesStudioShortcutScopeActive],
   )
 
   // History: Cmd/Ctrl+Shift+Z - Redo
   useHotkeys(
     hotkeys.REDO,
     (event) => {
+      if (hyperFramesStudioShortcutScopeActive) return
       event.preventDefault()
       useTimelineStore.temporal.getState().redo()
       if (callbacks.onRedo) {
@@ -47,7 +53,7 @@ export function useUIShortcuts(callbacks: TimelineShortcutCallbacks) {
       ...HOTKEY_OPTIONS,
       enableOnFormTags: true,
     },
-    [callbacks],
+    [callbacks, hyperFramesStudioShortcutScopeActive],
   )
 
   // UI: S - Toggle Snap

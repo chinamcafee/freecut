@@ -18,7 +18,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Settings2 } from 'lu
 import { useItemsStore } from '@/features/editor/deps/timeline-store'
 import { useEditorStore } from '@/shared/state/editor'
 import { useSelectionStore } from '@/shared/state/selection'
-import type { TimelineItem } from '@/types/timeline'
+import type { CompositionItem, TimelineItem } from '@/types/timeline'
 import { CanvasPanel } from './canvas-panel'
 import { useSettingsStore } from '@/features/editor/deps/settings'
 import {
@@ -36,8 +36,19 @@ const LazyMarkerPanel = lazy(() =>
 const LazyTransitionPanel = lazy(() =>
   import('./transition-panel').then((module) => ({ default: module.TransitionPanel })),
 )
+const LazyHyperFramesPropertiesPanel = lazy(() =>
+  import('@/features/hyperframes-runtime/components/HyperFramesPropertiesPanel').then((module) => ({
+    default: module.HyperFramesPropertiesPanel,
+  })),
+)
 
 type HeaderItem = Pick<TimelineItem, 'id' | 'label' | 'linkedGroupId' | 'type'>
+
+function isHyperFramesCompositionItem(
+  item: TimelineItem | undefined,
+): item is CompositionItem & { sourceKind: 'hyperframes' } {
+  return item?.type === 'composition' && item.sourceKind === 'hyperframes'
+}
 
 function buildClipHeaderGroups(items: HeaderItem[]) {
   const groups = new Map<
@@ -128,7 +139,7 @@ export const PropertiesSidebar = memo(function PropertiesSidebar() {
     useShallow(
       useCallback(
         (s) => {
-          const items: HeaderItem[] = []
+          const items: TimelineItem[] = []
 
           for (const itemId of selectedItemIds) {
             const item = s.itemById[itemId]
@@ -145,6 +156,10 @@ export const PropertiesSidebar = memo(function PropertiesSidebar() {
   )
 
   const hasClipSelection = selectedItemIds.length > 0
+  const selectedHyperFramesItem =
+    selectedItems.length === 1 && isHyperFramesCompositionItem(selectedItems[0])
+      ? selectedItems[0]
+      : undefined
   const clipHeader = useMemo(() => getClipHeader(selectedItems), [selectedItems])
   const activeClipHeader = !selectedTransitionId && !selectedMarkerId ? clipHeader : null
 
@@ -302,7 +317,11 @@ export const PropertiesSidebar = memo(function PropertiesSidebar() {
                 </Suspense>
               ) : hasClipSelection ? (
                 <Suspense fallback={null}>
-                  <LazyClipPanel />
+                  {selectedHyperFramesItem ? (
+                    <LazyHyperFramesPropertiesPanel item={selectedHyperFramesItem} />
+                  ) : (
+                    <LazyClipPanel />
+                  )}
                 </Suspense>
               ) : (
                 <CanvasPanel />

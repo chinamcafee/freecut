@@ -30,6 +30,7 @@ import { Separator } from '@/components/ui/separator'
 import { LocalInferenceStatusPill } from './local-inference-status-pill'
 import { ProjectDebugPanel } from './project-debug-panel'
 import { SettingsDialog } from './settings-dialog'
+import { OPEN_HYPERFRAMES_MODEL_CENTER_EVENT } from '@/features/hyperframes-runtime/model-center/modelStatus'
 import { ShortcutsDialog } from './shortcuts-dialog'
 import { UnsavedChangesDialog } from './unsaved-changes-dialog'
 import { WorkspaceSwitcher } from './workspace-switcher'
@@ -85,6 +86,7 @@ export const Toolbar = memo(function Toolbar({
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false)
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false)
   const [showSettingsDialog, setShowSettingsDialog] = useState(false)
+  const [settingsInitialSection, setSettingsInitialSection] = useState<'general' | 'ai'>('general')
   const [showWhatsNewDialog, setShowWhatsNewDialog] = useState(false)
   const [hasUnseenWhatsNew, setHasUnseenWhatsNew] = useState(false)
   const [isSaveAnimating, setIsSaveAnimating] = useState(false)
@@ -101,6 +103,15 @@ export const Toolbar = memo(function Toolbar({
       }),
     [brokenMediaIds, project.fps, timelineItems],
   )
+
+  useEffect(() => {
+    const openModelCenter = () => {
+      setSettingsInitialSection('ai')
+      setShowSettingsDialog(true)
+    }
+    window.addEventListener(OPEN_HYPERFRAMES_MODEL_CENTER_EVENT, openModelCenter)
+    return () => window.removeEventListener(OPEN_HYPERFRAMES_MODEL_CENTER_EVENT, openModelCenter)
+  }, [])
 
   useEffect(() => {
     setHasUnseenWhatsNew(hasUnseenChangelog())
@@ -211,7 +222,7 @@ export const Toolbar = memo(function Toolbar({
 
       <ShortcutsDialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog} />
 
-      <SettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} />
+      <SettingsDialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog} initialSection={settingsInitialSection} />
 
       <WhatsNewDialog open={showWhatsNewDialog} onOpenChange={setShowWhatsNewDialog} />
 
@@ -282,7 +293,10 @@ export const Toolbar = memo(function Toolbar({
           variant="outline"
           size="icon"
           className="h-7 w-7"
-          onClick={() => setShowSettingsDialog(true)}
+          onClick={() => {
+            setSettingsInitialSection('general')
+            setShowSettingsDialog(true)
+          }}
           data-tooltip={t('toolbar.settings')}
           data-tooltip-side="bottom"
           aria-label={t('toolbar.settings')}

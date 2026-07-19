@@ -6,6 +6,7 @@ import { useEditorStore } from '@/shared/state/editor'
 import { useSourcePlayerStore } from '@/shared/state/source-player'
 import { useTimelineStore } from '../../stores/timeline-store'
 import { useCompositionNavigationStore } from '../../stores/composition-navigation-store'
+import { FREECUT_STUDIO_OPEN_EVENT } from '@/features/hyperframes-runtime/bridges/studio-bridge/studioEvents'
 import {
   useTimelineItemPointerHandlers,
   type TimelineItemPointerHandlersInput,
@@ -163,6 +164,41 @@ describe('useTimelineItemPointerHandlers', () => {
       handlers.handleDoubleClick(makeMouseEvent())
 
       expect(enterComposition).toHaveBeenCalledWith('sub-comp-1', 'Comp', 'comp-1')
+    })
+
+    it('opens the FreeCut Studio for a HyperFrames source-linked composition item', () => {
+      const enterComposition = vi.spyOn(
+        useCompositionNavigationStore.getState(),
+        'enterComposition',
+      )
+      const openListener = vi.fn()
+      window.addEventListener(FREECUT_STUDIO_OPEN_EVENT, openListener)
+      const handlers = renderHandlers(
+        makeInput({
+          item: makeCompositionItem({
+            compositionId: 'hf-project',
+            sourceKind: 'hyperframes',
+            hyperframesProjectId: 'hf-project',
+            activeCompositionPath: 'compositions/main.html',
+          }),
+        }),
+      )
+
+      handlers.handleDoubleClick(makeMouseEvent())
+
+      expect(openListener).toHaveBeenCalledWith(
+        expect.objectContaining({
+          detail: expect.objectContaining({
+            item: expect.objectContaining({
+              id: 'comp-1',
+              hyperframesProjectId: 'hf-project',
+              activeCompositionPath: 'compositions/main.html',
+            }),
+          }),
+        }),
+      )
+      expect(enterComposition).not.toHaveBeenCalled()
+      window.removeEventListener(FREECUT_STUDIO_OPEN_EVENT, openListener)
     })
 
     it('opens the source monitor for a media item', () => {

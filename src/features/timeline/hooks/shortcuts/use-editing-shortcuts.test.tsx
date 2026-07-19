@@ -98,6 +98,7 @@ describe('useEditingShortcuts delete ownership', () => {
     useEditorStore.setState({
       keyframeEditorOpen: false,
       keyframeEditorShortcutScopeActive: false,
+      hyperFramesStudioShortcutScopeActive: false,
       transcriptEditorShortcutScopeActive: false,
     })
     usePlaybackStore.setState({
@@ -259,6 +260,21 @@ describe('useEditingShortcuts delete ownership', () => {
     expect(useTimelineStore.getState().items).toHaveLength(0)
     expect(deleteEvent.preventDefault).toHaveBeenCalled()
     expect(deleteEvent.stopPropagation).not.toHaveBeenCalled()
+  })
+
+  it('yields delete shortcuts to HyperFrames Studio without mutating the timeline', () => {
+    useSelectionStore.setState({ selectedItemIds: ['clip-1'], selectionType: 'item' })
+    useEditorStore.setState({ hyperFramesStudioShortcutScopeActive: true })
+
+    render(<ShortcutHarness />)
+
+    const [, deleteCallback] = getHotkeyRegistration(HOTKEYS.DELETE_SELECTED)
+    const event = createHotkeyEvent()
+    act(() => deleteCallback(event))
+
+    expect(useTimelineStore.getState().items).toHaveLength(1)
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(event.stopPropagation).not.toHaveBeenCalled()
   })
 
   it('Ctrl+K splits all items at playhead', () => {

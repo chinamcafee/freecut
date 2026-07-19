@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'vite-plus/test'
 
 import { computeIoGripWidth, IO_HANDLE_WIDTH } from './io-range-geometry'
 

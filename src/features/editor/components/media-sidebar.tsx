@@ -19,6 +19,7 @@ import {
   Blend,
   Pen,
   Captions,
+  Boxes,
   WandSparkles,
 } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
@@ -54,6 +55,11 @@ import { EffectThumbnail, useGpuEffectPreviewData } from '@/features/editor/deps
 import { createLogger } from '@/shared/logging/logger'
 import { useSettingsStore } from '@/features/editor/deps/settings'
 const LazyAiPanel = lazy(() => import('./ai-tab').then((m) => ({ default: m.AiTab })))
+const LazyHyperFramesProjectLibrary = lazy(() =>
+  import('./hyperframes-project-library-tab').then((module) => ({
+    default: module.HyperFramesProjectLibraryTab,
+  })),
+)
 import {
   TEXT_STYLE_PRESETS,
   type TextStylePresetLayout,
@@ -293,8 +299,12 @@ export const MediaSidebar = memo(function MediaSidebar() {
   const prefersReducedMotion = useReducedMotion()
 
   const [aiTabActivated, setAiTabActivated] = useState(activeTab === 'ai')
+  const [hyperFramesTabActivated, setHyperFramesTabActivated] = useState(
+    activeTab === 'hyperframes',
+  )
   useEffect(() => {
     if (activeTab === 'ai') setAiTabActivated(true)
+    if (activeTab === 'hyperframes') setHyperFramesTabActivated(true)
   }, [activeTab])
 
   // The collapsed panel stays mounted (clipped to 0 width, see NOTE below), so
@@ -560,6 +570,7 @@ export const MediaSidebar = memo(function MediaSidebar() {
     { id: 'transitions' as const, icon: Blend, label: t('editor.mediaSidebar.transitions') },
     { id: 'transcript' as const, icon: Captions, label: t('transcript.tabLabel') },
     { id: 'ai' as const, icon: WandSparkles, label: t('editor.mediaSidebar.ai') },
+    { id: 'hyperframes' as const, icon: Boxes, label: 'HyperFrames Projects' },
   ]
 
   const shouldSuppressGeneratedItemClick = useCallback(() => {
@@ -614,6 +625,11 @@ export const MediaSidebar = memo(function MediaSidebar() {
         >
           <button
             onClick={toggleLeftSidebar}
+            aria-label={
+              leftSidebarOpen
+                ? t('editor.mediaSidebar.collapsePanel')
+                : t('editor.mediaSidebar.expandPanel')
+            }
             className="rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors"
             style={{
               width: EDITOR_LAYOUT_CSS_VALUES.sidebarHeaderButtonSize,
@@ -639,6 +655,7 @@ export const MediaSidebar = memo(function MediaSidebar() {
           {categories.map(({ id, icon: Icon, label }) => (
             <button
               key={id}
+              aria-label={label}
               onClick={() => {
                 // The keyframe editor is a dedicated takeover of the column; choosing
                 // a category tab exits it and reveals that tab's content.
@@ -1175,6 +1192,17 @@ export const MediaSidebar = memo(function MediaSidebar() {
                 {aiTabActivated && (
                   <Suspense fallback={null}>
                     <LazyAiPanel />
+                  </Suspense>
+                )}
+              </div>
+
+              {/* HyperFrames Projects Tab */}
+              <div
+                className={`min-h-0 flex-1 overflow-hidden ${activeTab === 'hyperframes' ? 'block' : 'hidden'}`}
+              >
+                {hyperFramesTabActivated && (
+                  <Suspense fallback={null}>
+                    <LazyHyperFramesProjectLibrary />
                   </Suspense>
                 )}
               </div>

@@ -430,3 +430,150 @@ describe('migrateProject transition normalization', () => {
     expect(result.project.timeline?.tracks.map((track) => track.order)).toEqual([0, 1, 2])
   })
 })
+
+describe('migrateProject HyperFrames integration state', () => {
+  it('initializes empty manifest-backed HyperFrames state for existing projects', () => {
+    const project = {
+      ...createBaseProject({
+        tracks: [createTrack('video-track', 0, 'video')],
+        items: [],
+        transitions: [],
+      }),
+      schemaVersion: 12,
+    }
+
+    const result = migrateProject(project)
+
+    expect(result.appliedMigrations).toContain(13)
+    expect(result.project.schemaVersion).toBe(CURRENT_SCHEMA_VERSION)
+    expect(result.project.hyperframes).toMatchObject({
+      schemaVersion: 1,
+      projects: {},
+      compositionLinks: {},
+      renderCache: {},
+      skills: {},
+      modelProfiles: {},
+      modelCapabilityBindings: {},
+      toolPolicies: {},
+      renderConfig: {
+        defaultEngine: 'hybrid-overlay',
+        preferAlphaOverlay: true,
+        cacheEnabled: true,
+      },
+    })
+  })
+
+  it('migrates legacy embedded HyperFrames compositions into manifests and links', () => {
+    const legacyItem = {
+      id: 'item-1',
+      type: 'composition',
+      trackId: 'video-track',
+      from: 0,
+      durationInFrames: 90,
+      label: 'Legacy intro',
+      compositionId: 'legacy-intro',
+      compositionHtml: '<main>legacy</main>',
+      compositionWidth: 1280,
+      compositionHeight: 720,
+    } as ProjectTimeline['items'][number] & { compositionHtml: string }
+    const project = {
+      ...createBaseProject({
+        tracks: [createTrack('video-track', 0, 'video')],
+        items: [legacyItem],
+        transitions: [],
+      }),
+      schemaVersion: 12,
+      hyperframes: {
+        compositions: {
+          'legacy-intro': {
+            id: 'legacy-intro',
+            title: 'Legacy intro',
+            compositionHtml: '<main>legacy</main>',
+            activeCompositionPath: 'compositions/intro.html',
+            width: 1280,
+            height: 720,
+            fps: 24,
+            durationInFrames: 90,
+          },
+        },
+      },
+    } as unknown as Project
+
+    const result = migrateProject(project)
+    const migratedItem = result.project.timeline?.items[0]
+    const manifest = result.project.hyperframes?.projects['legacy-intro']
+
+    expect(manifest).toMatchObject({
+      id: 'legacy-intro',
+      title: 'Legacy intro',
+      activeCompositionPath: 'compositions/intro.html',
+      canvas: {
+        width: 1280,
+        height: 720,
+        fps: 24,
+        durationInFrames: 90,
+      },
+      provenance: {
+        source: 'legacy-composition',
+        freecutProjectId: 'project-1',
+      },
+    })
+    expect(migratedItem).toMatchObject({
+      sourceKind: 'hyperframes',
+      hyperframesProjectId: 'legacy-intro',
+      activeCompositionPath: 'compositions/intro.html',
+      hyperframesManifestPath: 'hyperframes/legacy-intro/manifest.json',
+    })
+    expect('compositionHtml' in (migratedItem as Record<string, unknown>)).toBe(false)
+    expect(result.project.hyperframes?.compositionLinks['item-1']).toMatchObject({
+      timelineItemId: 'item-1',
+      hyperframesProjectId: 'legacy-intro',
+      activeCompositionPath: 'compositions/intro.html',
+      importStrategy: 'source-linked',
+    })
+  })
+
+  it('creates a blocking diagnostic for source-linked items missing manifests', () => {
+    const project = {
+      ...createBaseProject({
+        tracks: [createTrack('video-track', 0, 'video')],
+        items: [
+          {
+            id: 'item-1',
+            type: 'composition',
+            trackId: 'video-track',
+            from: 0,
+            durationInFrames: 60,
+            label: 'Missing source',
+            compositionId: 'missing-source',
+            sourceKind: 'hyperframes',
+            hyperframesProjectId: 'missing-source',
+            activeCompositionPath: 'compositions/missing.html',
+            compositionWidth: 1920,
+            compositionHeight: 1080,
+          },
+        ],
+        transitions: [],
+      }),
+      schemaVersion: 12,
+      hyperframes: {
+        projects: {},
+        compositionLinks: {},
+      },
+    } as Project
+
+    const result = migrateProject(project)
+    const manifest = result.project.hyperframes?.projects['missing-source']
+
+    expect(manifest?.diagnostics?.[0]).toMatchObject({
+      id: 'manifest-missing-missing-source',
+      severity: 'blocking',
+      file: 'compositions/missing.html',
+    })
+    expect(result.project.hyperframes?.compositionLinks['item-1']).toMatchObject({
+      timelineItemId: 'item-1',
+      hyperframesProjectId: 'missing-source',
+      activeCompositionPath: 'compositions/missing.html',
+    })
+  })
+})

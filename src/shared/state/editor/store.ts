@@ -125,6 +125,7 @@ export const useEditorStore = create<EditorState & EditorActions>((set) => ({
   rightSidebarOpen: true,
   keyframeEditorOpen: false,
   keyframeEditorShortcutScopeActive: false,
+  hyperFramesStudioShortcutScopeActive: false,
   transcriptEditorShortcutScopeActive: false,
   workspace: initialWorkspace,
   activeTab: initialWorkspaceLayout.activeTab,
@@ -177,6 +178,8 @@ export const useEditorStore = create<EditorState & EditorActions>((set) => ({
     })),
   setKeyframeEditorShortcutScopeActive: (active) =>
     set({ keyframeEditorShortcutScopeActive: active }),
+  setHyperFramesStudioShortcutScopeActive: (active) =>
+    set({ hyperFramesStudioShortcutScopeActive: active }),
   setTranscriptEditorShortcutScopeActive: (active) =>
     set({ transcriptEditorShortcutScopeActive: active }),
   toggleLeftSidebar: () => set((state) => ({ leftSidebarOpen: !state.leftSidebarOpen })),

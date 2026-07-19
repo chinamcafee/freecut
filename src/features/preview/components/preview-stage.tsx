@@ -37,6 +37,7 @@ interface PreviewStageProps {
   colorGradeSplitPosition?: number
   onColorGradeSplitPositionChange?: (position: number) => void
   inputProps: CompositionInputProps
+  timelineHasItems?: boolean
   onBackgroundClick: MouseEventHandler<HTMLDivElement>
   onFrameChange: (frame: number) => void
   onPlayStateChange: (playing: boolean) => void
@@ -44,6 +45,7 @@ interface PreviewStageProps {
   perfPanel?: ReactNode
   comparisonOverlay?: ReactNode
   overlayControls?: ReactNode
+  hyperFramesOverlay?: ReactNode
 }
 
 export const PreviewStage = memo(function PreviewStage({
@@ -63,6 +65,7 @@ export const PreviewStage = memo(function PreviewStage({
   colorGradeSplitPosition = 0.5,
   onColorGradeSplitPositionChange,
   inputProps,
+  timelineHasItems,
   onBackgroundClick,
   onFrameChange,
   onPlayStateChange,
@@ -70,6 +73,7 @@ export const PreviewStage = memo(function PreviewStage({
   perfPanel,
   comparisonOverlay,
   overlayControls,
+  hyperFramesOverlay,
 }: PreviewStageProps) {
   const { t } = useTranslation()
   const useProxy = usePlaybackStore((s) => s.useProxy)
@@ -125,7 +129,8 @@ export const PreviewStage = memo(function PreviewStage({
     pixelSnapOffset.x !== 0 || pixelSnapOffset.y !== 0
       ? `translate3d(${pixelSnapOffset.x}px, ${pixelSnapOffset.y}px, 0)`
       : undefined
-  const isTimelineEmpty = inputProps.tracks.every((track) => track.items.length === 0)
+  const isTimelineEmpty =
+    !(timelineHasItems ?? inputProps.tracks.some((track) => track.items.length > 0))
   const isSplitGradeComparison = colorGradeComparisonMode === 'split'
   const splitPosition = Math.max(0.05, Math.min(0.95, colorGradeSplitPosition))
   const splitPercent = splitPosition * 100
@@ -254,6 +259,8 @@ export const PreviewStage = memo(function PreviewStage({
               >
                 <MainComposition {...inputProps} useProxyMedia={useProxy} />
               </HeadlessPlayer>
+
+              {hyperFramesOverlay}
 
               {FAST_SCRUB_RENDERER_ENABLED && (
                 <div

@@ -30,6 +30,7 @@ describe('editor-store', () => {
       rightSidebarOpen: true,
       keyframeEditorOpen: false,
       keyframeEditorShortcutScopeActive: false,
+      hyperFramesStudioShortcutScopeActive: false,
       activeTab: 'media',
       clipInspectorTab: 'video',
       sidebarWidth: editorLayout.leftSidebarDefaultWidth,
@@ -58,6 +59,7 @@ describe('editor-store', () => {
     expect(state.rightSidebarOpen).toBe(true)
     expect(state.keyframeEditorOpen).toBe(false)
     expect(state.keyframeEditorShortcutScopeActive).toBe(false)
+    expect(state.hyperFramesStudioShortcutScopeActive).toBe(false)
     expect(state.activeTab).toBe('media')
     expect(state.clipInspectorTab).toBe('video')
     expect(state.sourcePreviewMediaId).toBe(null)
@@ -71,6 +73,14 @@ describe('editor-store', () => {
     expect(state.sourcePatchAudioTrackId).toBe(null)
     expect(state.linkedSelectionEnabled).toBe(true)
     expect(state.colorScopesOpen).toBe(false)
+  })
+
+  it('tracks HyperFrames Studio shortcut ownership', () => {
+    useEditorStore.getState().setHyperFramesStudioShortcutScopeActive(true)
+    expect(useEditorStore.getState().hyperFramesStudioShortcutScopeActive).toBe(true)
+
+    useEditorStore.getState().setHyperFramesStudioShortcutScopeActive(false)
+    expect(useEditorStore.getState().hyperFramesStudioShortcutScopeActive).toBe(false)
   })
 
   it('sets active panel', () => {

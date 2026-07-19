@@ -33,6 +33,8 @@ import { isRateStretchableItem } from '../../hooks/use-rate-stretch'
 import { getTimelineClipLabelRowHeightPx } from './hover-layout'
 import { shouldSuppressTimelineItemClickAfterDrag } from './post-drag-click-guard'
 import { emitUiSound } from '@/shared/ui/ui-sound'
+import { emitFreeCutStudioOpenRequest } from '@/features/hyperframes-runtime/bridges/studio-bridge/studioEvents'
+import { resolveHyperFramesStudioItem } from '@/features/hyperframes-runtime/bridges/studio-bridge/types'
 import type { useTimelineDrag } from '../../hooks/use-timeline-drag'
 import type { useTimelineTrim } from '../../hooks/use-timeline-trim'
 import type { useRateStretch } from '../../hooks/use-rate-stretch'
@@ -203,6 +205,12 @@ export function useTimelineItemPointerHandlers({
       e.stopPropagation()
       if (trackLocked) return
       if (activeToolRef.current === 'razor') return
+
+      const hyperFramesStudioItem = resolveHyperFramesStudioItem(item)
+      if (hyperFramesStudioItem) {
+        emitFreeCutStudioOpenRequest({ item: hyperFramesStudioItem })
+        return
+      }
 
       // Compound clip wrappers: enter the sub-composition
       if (

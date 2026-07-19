@@ -87,6 +87,16 @@ type CompositionActionsProps = ItemContextMenuSectionProps & {
   onCreatePreComp?: () => void
 }
 
+type HyperFramesActionsProps = ItemContextMenuSectionProps & {
+  isHyperFramesItem?: boolean
+  onOpenStudio?: () => void
+  onRerender?: () => void
+  onRelinkProject?: () => void
+  onExportProject?: () => void
+  onConvertToNative?: () => void
+  onViewSource?: () => void
+}
+
 type MediaActionsProps = ItemContextMenuSectionProps & {
   canReverse?: boolean
   isReversed?: boolean
@@ -120,6 +130,7 @@ type LinkActionsConfig = Omit<LinkActionsProps, keyof ItemContextMenuSectionProp
 type MediaActionsConfig = Omit<MediaActionsProps, keyof ItemContextMenuSectionProps>
 type CaptionActionsConfig = Omit<CaptionActionsProps, keyof ItemContextMenuSectionProps>
 type CompositionActionsConfig = Omit<CompositionActionsProps, keyof ItemContextMenuSectionProps>
+type HyperFramesActionsConfig = Omit<HyperFramesActionsProps, keyof ItemContextMenuSectionProps>
 type DestructiveActionsConfig = Omit<DestructiveActionsProps, keyof ItemContextMenuSectionProps>
 
 type KeyframeActionsConfig = Omit<
@@ -150,6 +161,7 @@ interface ItemContextMenuProps {
   sceneDetectionActions?: SceneDetectionActionsConfig
   captionActions?: CaptionActionsConfig
   compositionActions?: CompositionActionsConfig
+  hyperFramesActions?: HyperFramesActionsConfig
 }
 
 /**
@@ -173,6 +185,7 @@ export const ItemContextMenu = memo(function ItemContextMenu({
   sceneDetectionActions,
   captionActions,
   compositionActions,
+  hyperFramesActions,
 }: ItemContextMenuProps) {
   // Lazy mount: defer the full Radix ContextMenu tree until first right-click.
   // This eliminates ~10 Radix provider components per item from the render tree
@@ -207,6 +220,7 @@ export const ItemContextMenu = memo(function ItemContextMenu({
       sceneDetectionActions={sceneDetectionActions}
       captionActions={captionActions}
       compositionActions={compositionActions}
+      hyperFramesActions={hyperFramesActions}
       pendingActivation={pendingActivation}
       onPendingActivationHandled={() => setPendingActivation(null)}
     >
@@ -259,6 +273,7 @@ const ItemContextMenuFull = memo(function ItemContextMenuFull({
   sceneDetectionActions,
   captionActions,
   compositionActions,
+  hyperFramesActions,
   pendingActivation,
   onPendingActivationHandled,
 }: Omit<ItemContextMenuProps, 'children'> & {
@@ -320,6 +335,9 @@ const ItemContextMenuFull = memo(function ItemContextMenuFull({
         )}
         {captionActions && <CaptionActions t={t} hotkeys={hotkeys} {...captionActions} />}
         <GradeActions t={t} />
+        {hyperFramesActions && (
+          <HyperFramesActions t={t} hotkeys={hotkeys} {...hyperFramesActions} />
+        )}
         {compositionActions && (
           <CompositionActions t={t} hotkeys={hotkeys} {...compositionActions} />
         )}
@@ -371,6 +389,29 @@ function GradeActions({ t }: { t: ReturnType<typeof useTranslation>['t'] }) {
           {t('timeline.contextMenu.pasteGrade')}
         </ContextMenuItem>
       )}
+      <ContextMenuSeparator />
+    </>
+  )
+}
+
+function HyperFramesActions({
+  isHyperFramesItem,
+  onOpenStudio,
+  onRerender,
+  onRelinkProject,
+  onExportProject,
+  onConvertToNative,
+  onViewSource,
+}: HyperFramesActionsProps) {
+  if (!isHyperFramesItem) return null
+  return (
+    <>
+      <ContextMenuItem onClick={onOpenStudio}>Open HyperFrames Studio</ContextMenuItem>
+      <ContextMenuItem onClick={onRerender}>Rerender HyperFrames cache</ContextMenuItem>
+      <ContextMenuItem onClick={onRelinkProject}>Relink HyperFrames project</ContextMenuItem>
+      <ContextMenuItem onClick={onExportProject}>Export HyperFrames project</ContextMenuItem>
+      <ContextMenuItem onClick={onConvertToNative}>Convert to native items</ContextMenuItem>
+      <ContextMenuItem onClick={onViewSource}>View HyperFrames source</ContextMenuItem>
       <ContextMenuSeparator />
     </>
   )

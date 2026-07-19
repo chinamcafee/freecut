@@ -41,8 +41,20 @@ import { useSettingsStore } from '@/features/editor/deps/settings'
 import { useMaskEditorStore } from '@/features/editor/deps/preview'
 import { usePlaybackStore } from '@/shared/state/playback'
 import { useEditorStore } from '@/shared/state/editor'
+import { useSelectionStore } from '@/shared/state/selection'
 import { clearPreviewAudioCache } from '@/features/editor/deps/composition-runtime'
 import { useProjectStore } from '@/features/editor/deps/projects'
+import {
+  isEditableKeyboardTarget,
+  subscribeFreeCutStudioOpenRequests,
+} from '@/features/hyperframes-runtime/bridges/studio-bridge/studioEvents'
+import { HyperFramesTimelineActionController } from './hyperframes-timeline-action-controller'
+import { HyperFramesGenerationPreviewController } from '@/features/hyperframes-runtime/components/HyperFramesGenerationPreviewController'
+import {
+  isHyperFramesStudioTimelineItem,
+  resolveHyperFramesStudioItem,
+  type FreeCutStudioTimelineItem,
+} from '@/features/hyperframes-runtime/bridges/studio-bridge/types'
 import {
   importExportDialog,
   importExportsDialog,
@@ -151,6 +163,13 @@ const LazyFillerRemovalDialog = lazy(() =>
   importFillerRemovalDialog().then((module) => ({
     default: module.FillerRemovalDialog,
   })),
+)
+const LazyFreeCutStudioShell = lazy(() =>
+  import('@/features/hyperframes-runtime/bridges/studio-bridge/FreeCutStudioShell').then(
+    (module) => ({
+      default: module.FreeCutStudioShell,
+    }),
+  ),
 )
 function preloadExportDialog() {
   return importExportDialog()
@@ -366,6 +385,7 @@ export const LoadedEditor = memo(function LoadedEditor({
   const [exportDialogOpen, setExportDialogOpen] = useState(false)
   const [bundleExportDialogOpen, setBundleExportDialogOpen] = useState(false)
   const [renderQueueOpen, setRenderQueueOpen] = useState(false)
+  const [studioItem, setStudioItem] = useState<FreeCutStudioTimelineItem | null>(null)
   const renderQueueActiveCount = useRenderQueueStore(
     (s) => s.jobs.filter((j) => j.status === 'queued' || j.status === 'rendering').length,
   )
@@ -375,6 +395,9 @@ export const LoadedEditor = memo(function LoadedEditor({
   const editorLayout = getEditorLayout(editorDensity)
   const editorLayoutCssVars = getEditorLayoutCssVars(editorLayout)
   const syncSidebarLayout = useEditorStore((s) => s.syncSidebarLayout)
+  const setHyperFramesStudioShortcutScopeActive = useEditorStore(
+    (s) => s.setHyperFramesStudioShortcutScopeActive,
+  )
   const propertiesFullColumn = useEditorStore((s) => s.propertiesFullColumn)
   const mediaFullColumn = useEditorStore((s) => s.mediaFullColumn)
   const workspace = useEditorStore((s) => s.workspace)
@@ -388,7 +411,44 @@ export const LoadedEditor = memo(function LoadedEditor({
 
   useEffect(() => {
     hasRefreshedMigrationStateRef.current = false
+    setStudioItem(null)
   }, [projectId])
+
+  useEffect(() => {
+    return subscribeFreeCutStudioOpenRequests((request) => {
+      setStudioItem(request.item)
+    })
+  }, [])
+
+  useEffect(() => {
+    setHyperFramesStudioShortcutScopeActive(studioItem !== null)
+    return () => setHyperFramesStudioShortcutScopeActive(false)
+  }, [setHyperFramesStudioShortcutScopeActive, studioItem])
+
+  useEffect(() => {
+    if (studioItem) return
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.defaultPrevented || event.key !== 'Enter') return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (isEditableKeyboardTarget(event.target)) return
+
+      const selectedItemIds = useSelectionStore.getState().selectedItemIds
+      if (selectedItemIds.length !== 1) return
+      const selectedItem = useTimelineStore
+        .getState()
+        .items.find((item) => item.id === selectedItemIds[0])
+      const hyperFramesItem = resolveHyperFramesStudioItem(selectedItem)
+      if (!hyperFramesItem) return
+
+      event.preventDefault()
+      event.stopPropagation()
+      setStudioItem(hyperFramesItem)
+    }
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [studioItem])
 
   useEffect(() => {
     rememberLastEditorProjectId(projectId)
@@ -822,6 +882,41 @@ export const LoadedEditor = memo(function LoadedEditor({
 
       <EditorDialogHost projectId={projectId} />
       <TimelineDialogHost />
+      <HyperFramesTimelineActionController freecutProjectId={projectId} />
+      <HyperFramesGenerationPreviewController />
+
+      {studioItem && (
+        <Suspense fallback={null}>
+          <LazyFreeCutStudioShell
+            freecutProjectId={projectId}
+            item={studioItem}
+            onClose={() => setStudioItem(null)}
+            onDirtyChange={(studioDirty) => {
+              const projectId = studioItem.hyperframesProjectId ?? studioItem.compositionId
+              const timeline = useTimelineStore.getState()
+              const linkedItems = timeline.items.filter(
+                (item): item is FreeCutStudioTimelineItem =>
+                  isHyperFramesStudioTimelineItem(item) &&
+                  (item.hyperframesProjectId ?? item.compositionId) === projectId,
+              )
+              for (const currentItem of linkedItems) {
+                if ((currentItem.hyperframesVisualState?.studioDirty ?? false) === studioDirty) {
+                  continue
+                }
+                timeline.updateItem(currentItem.id, {
+                  hyperframesVisualState: {
+                    diagnosticStatus:
+                      currentItem.hyperframesVisualState?.diagnosticStatus ?? 'ready',
+                    cacheStatus: currentItem.hyperframesVisualState?.cacheStatus ?? 'missing',
+                    renderStatus: currentItem.hyperframesVisualState?.renderStatus ?? 'idle',
+                    studioDirty,
+                  },
+                })
+              }
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Single global cursor-readout for IO (in/out) drags across all surfaces. */}
       <IoDragReadout />

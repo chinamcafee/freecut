@@ -4,7 +4,13 @@
     "browser": true
   },
   "plugins": ["react"],
-  "ignorePatterns": ["dist/**", "coverage/**", "public/wasm/**", "tmp/**"],
+  "ignorePatterns": [
+    "dist/**",
+    "coverage/**",
+    "public/wasm/**",
+    "tmp/**",
+    "src/features/hyperframes-runtime/upstream/producer-node/**"
+  ],
   "rules": {
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn",

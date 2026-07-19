@@ -9,6 +9,11 @@
 
 import type { Migration } from './types'
 import type { Project, ProjectTimeline } from '@/types/project'
+import type {
+  HyperFramesCompositionLink,
+  HyperFramesIntegrationState,
+  HyperFramesProjectManifest,
+} from '@/types/hyperframes'
 import { sanitizeTextMotion } from './sanitize-text-motion'
 
 // Historical constants used by specific migrations.
@@ -19,6 +24,7 @@ const TRACK_HEIGHT_V4_TARGET = 80
 
 type ProjectItem = ProjectTimeline['items'][number]
 type ProjectTransition = NonNullable<ProjectTimeline['transitions']>[number]
+type LooseRecord = Record<string, unknown>
 
 function isLegacyLinkedPair(anchor: ProjectItem, candidate: ProjectItem): boolean {
   if (candidate.id === anchor.id) return false
@@ -291,6 +297,380 @@ function migrateTimelineIdentityFields(timeline: ProjectTimeline): ProjectTimeli
       items: backfillOriginIds(composition.items),
     })),
   }
+}
+
+function createEmptyHyperFramesState(): HyperFramesIntegrationState {
+  return {
+    schemaVersion: 1,
+    projects: {},
+    compositionLinks: {},
+    renderCache: {},
+    skills: {},
+    modelProfiles: {},
+    modelCapabilityBindings: {},
+    toolPolicies: {},
+    renderConfig: {
+      defaultEngine: 'hybrid-overlay',
+      preferAlphaOverlay: true,
+      cacheEnabled: true,
+    },
+  }
+}
+
+function migrateHyperFramesIntegrationState(project: Project): Project {
+  const rawHyperFrames = (project as Project & { hyperframes?: unknown }).hyperframes
+  const existing = isRecord(rawHyperFrames) ? rawHyperFrames : undefined
+  const state = mergeExistingHyperFramesState(existing)
+  const legacyManifestByLegacyId = new Map<string, HyperFramesProjectManifest>()
+
+  for (const legacyComposition of collectLegacyCompositions(existing)) {
+    const manifest = createLegacyCompositionManifest(project, legacyComposition)
+    state.projects[manifest.id] = manifest
+    const legacyId = asString(legacyComposition.id) ?? asString(legacyComposition.compositionId)
+    if (legacyId) {
+      legacyManifestByLegacyId.set(legacyId, manifest)
+    }
+  }
+
+  const timeline = project.timeline
+  if (!timeline) {
+    return {
+      ...project,
+      hyperframes: state,
+    }
+  }
+
+  const rootMigration = migrateHyperFramesTimelineItems(
+    project,
+    timeline.items ?? [],
+    state,
+    legacyManifestByLegacyId,
+  )
+  const compositions = timeline.compositions?.map((composition) => {
+    const migrated = migrateHyperFramesTimelineItems(
+      project,
+      composition.items ?? [],
+      state,
+      legacyManifestByLegacyId,
+    )
+    return migrated.changed
+      ? {
+          ...composition,
+          items: migrated.items,
+        }
+      : composition
+  })
+
+  return {
+    ...project,
+    hyperframes: state,
+    timeline: {
+      ...timeline,
+      items: rootMigration.items,
+      compositions,
+    },
+  }
+}
+
+function mergeExistingHyperFramesState(existing?: LooseRecord): HyperFramesIntegrationState {
+  const empty = createEmptyHyperFramesState()
+  if (!existing) return empty
+
+  return {
+    schemaVersion: 1,
+    projects: isRecord(existing.projects)
+      ? ({ ...existing.projects } as Record<string, HyperFramesProjectManifest>)
+      : {},
+    compositionLinks: isRecord(existing.compositionLinks)
+      ? ({ ...existing.compositionLinks } as Record<string, HyperFramesCompositionLink>)
+      : {},
+    renderCache: isRecord(existing.renderCache)
+      ? (existing.renderCache as HyperFramesIntegrationState['renderCache'])
+      : {},
+    skills: isRecord(existing.skills)
+      ? (existing.skills as HyperFramesIntegrationState['skills'])
+      : {},
+    modelProfiles: isRecord(existing.modelProfiles)
+      ? (existing.modelProfiles as HyperFramesIntegrationState['modelProfiles'])
+      : {},
+    modelCapabilityBindings: isRecord(existing.modelCapabilityBindings)
+      ? (existing.modelCapabilityBindings as HyperFramesIntegrationState['modelCapabilityBindings'])
+      : {},
+    toolPolicies: isRecord(existing.toolPolicies)
+      ? (existing.toolPolicies as HyperFramesIntegrationState['toolPolicies'])
+      : {},
+    renderConfig: isRecord(existing.renderConfig)
+      ? {
+          ...empty.renderConfig,
+          ...(existing.renderConfig as Partial<HyperFramesIntegrationState['renderConfig']>),
+        }
+      : empty.renderConfig,
+  }
+}
+
+function migrateHyperFramesTimelineItems(
+  project: Project,
+  items: ProjectTimeline['items'],
+  state: HyperFramesIntegrationState,
+  legacyManifestByLegacyId: Map<string, HyperFramesProjectManifest>,
+): { items: ProjectTimeline['items']; changed: boolean } {
+  let changed = false
+  const migratedItems: ProjectTimeline['items'] = items.map((item): ProjectItem => {
+    const record = item as ProjectItem & LooseRecord
+    if (record.type !== 'composition') {
+      return stripLegacyCompositionHtml(item)
+    }
+
+    const linkedManifest = resolveManifestForTimelineItem(
+      project,
+      record,
+      state,
+      legacyManifestByLegacyId,
+    )
+    if (!linkedManifest) {
+      const stripped = stripLegacyCompositionHtml(item)
+      changed = changed || stripped !== item
+      return stripped
+    }
+
+    ensureCompositionLink(state, record, linkedManifest)
+    changed = true
+    return {
+      ...stripLegacyCompositionHtml(item),
+      sourceKind: 'hyperframes',
+      hyperframesProjectId: linkedManifest.id,
+      activeCompositionPath: linkedManifest.activeCompositionPath,
+      hyperframesManifestPath: `hyperframes/${linkedManifest.id}/manifest.json`,
+    } as ProjectItem
+  })
+
+  return { items: migratedItems, changed }
+}
+
+function resolveManifestForTimelineItem(
+  project: Project,
+  item: ProjectItem & LooseRecord,
+  state: HyperFramesIntegrationState,
+  legacyManifestByLegacyId: Map<string, HyperFramesProjectManifest>,
+): HyperFramesProjectManifest | null {
+  const existingProjectId = asString(item.hyperframesProjectId)
+  if (existingProjectId) {
+    const existingManifest = state.projects[existingProjectId]
+    if (existingManifest) return existingManifest
+    const missingManifest = createMissingLinkedManifest(project, item, existingProjectId)
+    state.projects[missingManifest.id] = missingManifest
+    return missingManifest
+  }
+
+  const compositionId = asString(item.compositionId)
+  if (compositionId) {
+    const legacyManifest = legacyManifestByLegacyId.get(compositionId)
+    if (legacyManifest) return legacyManifest
+  }
+
+  if (item.sourceKind === 'hyperframes') {
+    const missingProjectId = compositionId ?? `missing-${stableHash(item.id)}`
+    const missingManifest = createMissingLinkedManifest(project, item, missingProjectId)
+    state.projects[missingManifest.id] = missingManifest
+    return missingManifest
+  }
+
+  if (typeof item.compositionHtml === 'string') {
+    const manifest = createLegacyCompositionManifest(project, {
+      id: compositionId ?? item.id,
+      title: item.label,
+      compositionHtml: item.compositionHtml,
+      activeCompositionPath: asString(item.activeCompositionPath),
+      durationInFrames: item.durationInFrames,
+    })
+    state.projects[manifest.id] = manifest
+    return manifest
+  }
+
+  return null
+}
+
+function ensureCompositionLink(
+  state: HyperFramesIntegrationState,
+  item: ProjectItem,
+  manifest: HyperFramesProjectManifest,
+): void {
+  state.compositionLinks[item.id] = {
+    id: `link-${item.id}`,
+    timelineItemId: item.id,
+    hyperframesProjectId: manifest.id,
+    manifestPath: `hyperframes/${manifest.id}/manifest.json`,
+    activeCompositionPath: manifest.activeCompositionPath,
+    createdAt: manifest.provenance.createdAt,
+    updatedAt: manifest.provenance.updatedAt,
+    importStrategy: 'source-linked',
+  }
+}
+
+function createLegacyCompositionManifest(
+  project: Project,
+  legacyComposition: LooseRecord,
+): HyperFramesProjectManifest {
+  const title =
+    asString(legacyComposition.title) ??
+    asString(legacyComposition.name) ??
+    asString(legacyComposition.label) ??
+    'Legacy HyperFrames Composition'
+  const id = safeProjectId(
+    asString(legacyComposition.id) ??
+      asString(legacyComposition.compositionId) ??
+      `legacy-${stableHash(title)}`,
+  )
+  const activeCompositionPath = safeProjectPath(
+    asString(legacyComposition.activeCompositionPath) ?? asString(legacyComposition.path),
+    'compositions/main.html',
+  )
+  const hasSourceHtml =
+    typeof legacyComposition.compositionHtml === 'string' ||
+    typeof legacyComposition.html === 'string' ||
+    typeof legacyComposition.content === 'string'
+
+  return {
+    schemaVersion: 1,
+    id,
+    title,
+    entryFile: 'index.html',
+    activeCompositionPath,
+    canvas: {
+      width: asNumber(legacyComposition.width) ?? project.metadata.width,
+      height: asNumber(legacyComposition.height) ?? project.metadata.height,
+      fps: asNumber(legacyComposition.fps) ?? project.metadata.fps,
+      durationInFrames:
+        asNumber(legacyComposition.durationInFrames) ?? Math.max(1, Math.round(project.duration)),
+      backgroundColor: project.metadata.backgroundColor,
+    },
+    assets: [],
+    provenance: {
+      source: 'legacy-composition',
+      createdAt: asNumber(legacyComposition.createdAt) ?? project.createdAt,
+      updatedAt: asNumber(legacyComposition.updatedAt) ?? project.updatedAt,
+      freecutProjectId: project.id,
+    },
+    diagnostics: hasSourceHtml
+      ? undefined
+      : [
+          {
+            id: `legacy-source-missing-${id}`,
+            severity: 'blocking',
+            message:
+              'Legacy HyperFrames composition did not include source HTML; reconnect or re-import the project directory.',
+            file: activeCompositionPath,
+          },
+        ],
+  }
+}
+
+function createMissingLinkedManifest(
+  project: Project,
+  item: ProjectItem & LooseRecord,
+  projectId: string,
+): HyperFramesProjectManifest {
+  const id = safeProjectId(projectId)
+  const activeCompositionPath = safeProjectPath(
+    asString(item.activeCompositionPath),
+    'compositions/main.html',
+  )
+  return {
+    schemaVersion: 1,
+    id,
+    title: item.label || id,
+    entryFile: 'index.html',
+    activeCompositionPath,
+    canvas: {
+      width: item.compositionWidth ?? project.metadata.width,
+      height: item.compositionHeight ?? project.metadata.height,
+      fps: project.metadata.fps,
+      durationInFrames: item.durationInFrames,
+      backgroundColor: project.metadata.backgroundColor,
+    },
+    assets: [],
+    provenance: {
+      source: 'hyperframes-project',
+      createdAt: project.createdAt,
+      updatedAt: project.updatedAt,
+      freecutProjectId: project.id,
+      timelineItemId: item.id,
+    },
+    diagnostics: [
+      {
+        id: `manifest-missing-${id}`,
+        severity: 'blocking',
+        message:
+          'HyperFrames source-linked composition references a project manifest that is missing from the FreeCut project state.',
+        file: activeCompositionPath,
+      },
+    ],
+  }
+}
+
+function collectLegacyCompositions(existing?: LooseRecord): LooseRecord[] {
+  const compositions = existing?.compositions
+  if (Array.isArray(compositions)) {
+    return compositions.filter(isRecord)
+  }
+  if (isRecord(compositions)) {
+    return Object.values(compositions).filter(isRecord)
+  }
+  return []
+}
+
+function stripLegacyCompositionHtml(item: ProjectItem): ProjectItem {
+  const record = item as ProjectItem & LooseRecord
+  if (!('compositionHtml' in record)) return item
+  const { compositionHtml: _compositionHtml, ...rest } = record
+  return rest as ProjectItem
+}
+
+function safeProjectPath(path: string | undefined, fallback: string): string {
+  if (!path) return fallback
+  if (
+    path.startsWith('/') ||
+    path.includes('\\') ||
+    path.includes('..') ||
+    /^[a-zA-Z]:/.test(path) ||
+    /^[a-zA-Z][a-zA-Z\d+.-]*:/.test(path)
+  ) {
+    return fallback
+  }
+  const segments = path.split('/').filter(Boolean)
+  if (segments.length === 0 || segments.some((segment) => segment === '.' || segment === '..')) {
+    return fallback
+  }
+  return segments.join('/')
+}
+
+function safeProjectId(value: string): string {
+  const sanitized = value
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return sanitized || `hyperframes-${stableHash(value)}`
+}
+
+function isRecord(value: unknown): value is LooseRecord {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function asString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
+function asNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+}
+
+function stableHash(input: string): string {
+  let hash = 2166136261
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0')
 }
 
 /**
@@ -920,6 +1300,19 @@ const migrations: Record<number, Migration> = {
         },
       } as Project
     },
+  },
+  /**
+   * Version 13: Initialize manifest-backed HyperFrames integration state
+   *
+   * Converts legacy embedded HyperFrames composition records into manifest
+   * entries and source-linked composition items. Existing source-linked items
+   * without a manifest are preserved with a blocking diagnostic so the UI can
+   * ask the user to reconnect or re-import the missing project directory.
+   */
+  13: {
+    version: 13,
+    description: 'Initialize manifest-backed HyperFrames integration state',
+    migrate: migrateHyperFramesIntegrationState,
   },
 }
 

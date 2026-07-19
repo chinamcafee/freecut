@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "policy": {
+    "forbiddenInFreeCutBusinessCode": true,
+    "allowedOnlyDuringMigrationRewrite": true,
+    "message": "FreeCut business code must import HyperFrames capabilities through src/features/hyperframes-runtime adapters or bridges, not through @hyperframes/* npm packages."
+  },
+  "rules": [
+    {
+      "from": "@hyperframes/core",
+      "to": "@/features/hyperframes-runtime/upstream/core",
+      "ownerPackage": "core",
+      "nodeOnly": false
+    },
+    {
+      "from": "@hyperframes/parsers",
+      "to": "@/features/hyperframes-runtime/upstream/parsers",
+      "ownerPackage": "parsers",
+      "nodeOnly": false
+    },
+    {
+      "from": "@hyperframes/lint",
+      "to": "@/features/hyperframes-runtime/upstream/lint",
+      "ownerPackage": "lint",
+      "nodeOnly": false
+    },
+    {
+      "from": "@hyperframes/player",
+      "to": "@/features/hyperframes-runtime/upstream/player",
+      "ownerPackage": "player",
+      "nodeOnly": false
+    },
+    {
+      "from": "@hyperframes/studio",
+      "to": "@/features/hyperframes-runtime/upstream/studio",
+      "ownerPackage": "studio",
+      "nodeOnly": false
+    },
+    {
+      "from": "@hyperframes/studio-server",
+      "to": "@/features/hyperframes-runtime/upstream/studio-server",
+      "ownerPackage": "studio-server",
+      "nodeOnly": true
+    },
+    {
+      "from": "@hyperframes/producer",
+      "to": "@/features/hyperframes-runtime/upstream/producer-node",
+      "ownerPackage": "producer-node",
+      "nodeOnly": true
+    }
+  ]
+}

@@ -116,6 +116,35 @@ describe('ItemContextMenu scene detection', () => {
   })
 })
 
+describe('ItemContextMenu HyperFrames actions', () => {
+  it('shows source-linked project actions and dispatches the selected command', () => {
+    const onRerender = vi.fn()
+    const onConvertToNative = vi.fn()
+
+    renderContextMenu({
+      hyperFramesActions: {
+        isHyperFramesItem: true,
+        onOpenStudio: vi.fn(),
+        onRerender,
+        onRelinkProject: vi.fn(),
+        onExportProject: vi.fn(),
+        onConvertToNative,
+        onViewSource: vi.fn(),
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rerender HyperFrames cache' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Convert to native items' }))
+
+    expect(onRerender).toHaveBeenCalledOnce()
+    expect(onConvertToNative).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'Open HyperFrames Studio' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Relink HyperFrames project' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Export HyperFrames project' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'View HyperFrames source' })).toBeInTheDocument()
+  })
+})
+
 describe('ItemContextMenu captions', () => {
   it('shows a single "Generate Captions" item when no transcript exists', () => {
     const onOpenCaptionDialog = vi.fn()

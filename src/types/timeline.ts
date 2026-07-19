@@ -6,6 +6,7 @@ import type { AudioEqSettings } from './audio'
 import type { TextStylePresetId } from '@/shared/typography/text-style-preset-ids'
 import type { TextMotionSpec } from './text-motion'
 import type { TextLayoutDrafts, TextSpan, TextStyleFields } from './text'
+import type { HyperFramesTimelineSourceKind, HyperFramesTimelineVisualState } from './hyperframes'
 
 export interface TimelineItemCornerPin {
   topLeft: [number, number]
@@ -248,6 +249,16 @@ export type AdjustmentItem = BaseTimelineItem & {
 export type CompositionItem = BaseTimelineItem & {
   type: 'composition'
   compositionId: string // References a SubComposition in compositions-store
+  /**
+   * `freecut` compositions reference an internal SubComposition.
+   * `hyperframes` compositions are source-linked HyperFrames project directories.
+   */
+  sourceKind?: HyperFramesTimelineSourceKind
+  hyperframesProjectId?: string
+  activeCompositionPath?: string
+  hyperframesManifestPath?: string
+  hyperframesVisualState?: HyperFramesTimelineVisualState
+  thumbnailUrl?: string
   // Dimensions of the sub-composition canvas
   compositionWidth: number
   compositionHeight: number

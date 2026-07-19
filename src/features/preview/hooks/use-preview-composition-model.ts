@@ -297,12 +297,23 @@ export function buildPreviewCompositionData({
   const scrubSpans: VideoSourceSpan[] = []
   const boundaryFrames = new Set<number>()
   const boundarySources = new Map<number, Set<string>>()
+  const hyperFramesSourceItemIds = new Set(
+    items
+      .filter(
+        (item) => item.type === 'composition' && item.sourceKind === 'hyperframes',
+      )
+      .map((item) => item.id),
+  )
 
   for (const track of combinedTracks) {
     const resolvedItems: typeof track.items = []
     const fastScrubItems: typeof track.items = []
 
     for (const item of track.items) {
+      if (item.type === 'composition' && item.sourceKind === 'hyperframes') {
+        hyperFramesSourceItemIds.add(item.id)
+        continue
+      }
       if (
         !item.mediaId ||
         (item.type !== 'video' && item.type !== 'audio' && item.type !== 'image')
@@ -399,14 +410,22 @@ export function buildPreviewCompositionData({
     0,
   )
   const totalFrames = furthestItemEndFrame === 0 ? 900 : furthestItemEndFrame + fps * 5
+  const freeCutKeyframes = keyframes.filter(
+    (entry) => !hyperFramesSourceItemIds.has(entry.itemId),
+  )
+  const freeCutTransitions = (transitions ?? []).filter(
+    (transition) =>
+      !hyperFramesSourceItemIds.has(transition.leftClipId) &&
+      !hyperFramesSourceItemIds.has(transition.rightClipId),
+  )
   const inputProps: CompositionInputProps = {
     fps,
     width: project.width,
     height: project.height,
     tracks: resolvedTracks as CompositionInputProps['tracks'],
-    transitions,
+    transitions: freeCutTransitions,
     backgroundColor: project.backgroundColor,
-    keyframes,
+    keyframes: freeCutKeyframes,
     busAudioEq,
   }
   const playerRenderSize = {
@@ -418,13 +437,13 @@ export function buildPreviewCompositionData({
     height: Math.max(2, Math.max(1, Math.round(project.height))),
   }
   const fastScrubScaledTracks = fastScrubTracks as CompositionInputProps['tracks']
-  const fastScrubScaledKeyframes = keyframes
+  const fastScrubScaledKeyframes = freeCutKeyframes
   const fastScrubInputProps: CompositionInputProps = {
     fps,
     width: project.width,
     height: project.height,
     tracks: fastScrubScaledTracks,
-    transitions,
+    transitions: freeCutTransitions,
     backgroundColor: project.backgroundColor,
     keyframes: fastScrubScaledKeyframes,
     busAudioEq,

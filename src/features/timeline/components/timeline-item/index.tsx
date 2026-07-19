@@ -63,6 +63,11 @@ import { useLinkedSyncPreview } from './use-linked-sync-preview'
 import { useClipReadoutLabels } from './use-clip-readout-labels'
 import { useTimelineItemPointerHandlers } from './use-timeline-item-pointer-handlers'
 import { ClipFloatingLayer } from './clip-floating-layer'
+import { HyperFramesClipBadges } from './hyperframes-clip-badges'
+import { getHyperFramesClipColorClasses } from './hyperframes-clip-visual-state'
+import { emitFreeCutStudioOpenRequest } from '@/features/hyperframes-runtime/bridges/studio-bridge/studioEvents'
+import { emitHyperFramesTimelineAction } from '@/features/hyperframes-runtime/bridges/studio-bridge/timelineActions'
+import { resolveHyperFramesStudioItem } from '@/features/hyperframes-runtime/bridges/studio-bridge/types'
 const EMPTY_SEGMENT_OVERLAYS = [] as const
 const EMPTY_LINKED_ITEMS: TimelineItemType[] = []
 
@@ -581,11 +586,11 @@ export const TimelineItem = memo(function TimelineItem({
       case 'adjustment':
         return 'bg-purple-500/30 border-purple-400'
       case 'composition':
-        return 'bg-violet-600/40 border-violet-400'
+        return getHyperFramesClipColorClasses(item) ?? 'bg-violet-600/40 border-violet-400'
       default:
         return 'bg-timeline-video border-timeline-video'
     }
-  }, [item.type])
+  }, [item])
 
   const { handleClick, handleDoubleClick, handleMouseDown, handleSmartTrimStart } =
     useTimelineItemPointerHandlers({
@@ -904,6 +909,34 @@ export const TimelineItem = memo(function TimelineItem({
           canCreatePreComp: isSelected,
           onCreatePreComp: handleCreatePreComp,
         }}
+        hyperFramesActions={{
+          isHyperFramesItem:
+            item.type === 'composition' && item.sourceKind === 'hyperframes',
+          onOpenStudio: () => {
+            const studioItem = resolveHyperFramesStudioItem(item)
+            if (studioItem) emitFreeCutStudioOpenRequest({ item: studioItem })
+          },
+          onRerender: () => {
+            const studioItem = resolveHyperFramesStudioItem(item)
+            if (studioItem) emitHyperFramesTimelineAction('rerender', studioItem)
+          },
+          onRelinkProject: () => {
+            const studioItem = resolveHyperFramesStudioItem(item)
+            if (studioItem) emitHyperFramesTimelineAction('relink-project', studioItem)
+          },
+          onExportProject: () => {
+            const studioItem = resolveHyperFramesStudioItem(item)
+            if (studioItem) emitHyperFramesTimelineAction('export-project', studioItem)
+          },
+          onConvertToNative: () => {
+            const studioItem = resolveHyperFramesStudioItem(item)
+            if (studioItem) emitHyperFramesTimelineAction('convert-to-native', studioItem)
+          },
+          onViewSource: () => {
+            const studioItem = resolveHyperFramesStudioItem(item)
+            if (studioItem) emitHyperFramesTimelineAction('view-source', studioItem)
+          },
+        }}
         sceneDetectionActions={{
           canDetectScenes: item.type === 'video' && !!item.mediaId && !isBroken,
           isDetectingScenes: isSceneDetectionActive,
@@ -1056,6 +1089,8 @@ export const TimelineItem = memo(function TimelineItem({
               audioWaveformScale={audioVisualizationScale}
               linkedSyncOffsetFrames={linkedSyncOffsetFrames}
             />
+
+            <HyperFramesClipBadges item={item} />
 
             {!useCompactClipShell && (
               /* Status indicators */

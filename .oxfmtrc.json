@@ -7,5 +7,11 @@
   "singleQuote": true,
   "trailingComma": "all",
   "endOfLine": "lf",
-  "ignorePatterns": ["dist/**", "coverage/**", "public/wasm/**", "tmp/**"]
+  "ignorePatterns": [
+    "dist/**",
+    "coverage/**",
+    "public/wasm/**",
+    "tmp/**",
+    "src/features/hyperframes-runtime/upstream/producer-node/**"
+  ]
 }

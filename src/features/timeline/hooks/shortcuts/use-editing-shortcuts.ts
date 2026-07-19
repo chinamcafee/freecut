@@ -44,6 +44,9 @@ export function useEditingShortcuts(callbacks: TimelineShortcutCallbacks) {
   const transcriptEditorShortcutScopeActive = useEditorStore(
     (s) => s.transcriptEditorShortcutScopeActive,
   )
+  const hyperFramesStudioShortcutScopeActive = useEditorStore(
+    (s) => s.hyperFramesStudioShortcutScopeActive,
+  )
   const toggleLinkedSelectionEnabled = useEditorStore((s) => s.toggleLinkedSelectionEnabled)
   // Another panel (keyframe or transcript editor) owns Delete/Backspace — clip
   // delete must yield so it doesn't also fire and remove the timeline clip.
@@ -82,6 +85,7 @@ export function useEditingShortcuts(callbacks: TimelineShortcutCallbacks) {
   useHotkeys(
     hotkeys.DELETE_SELECTED,
     (event) => {
+      if (hyperFramesStudioShortcutScopeActive) return
       if (deleteOwnedByPanel) {
         event.preventDefault()
         event.stopPropagation()
@@ -118,6 +122,7 @@ export function useEditingShortcuts(callbacks: TimelineShortcutCallbacks) {
       removeTransition,
       clearSelection,
       callbacks,
+      hyperFramesStudioShortcutScopeActive,
     ],
   )
 
@@ -125,6 +130,7 @@ export function useEditingShortcuts(callbacks: TimelineShortcutCallbacks) {
   useHotkeys(
     hotkeys.DELETE_SELECTED_ALT,
     (event) => {
+      if (hyperFramesStudioShortcutScopeActive) return
       if (deleteOwnedByPanel) {
         event.preventDefault()
         event.stopPropagation()
@@ -161,6 +167,7 @@ export function useEditingShortcuts(callbacks: TimelineShortcutCallbacks) {
       removeTransition,
       clearSelection,
       callbacks,
+      hyperFramesStudioShortcutScopeActive,
     ],
   )
 
@@ -168,6 +175,7 @@ export function useEditingShortcuts(callbacks: TimelineShortcutCallbacks) {
   useHotkeys(
     hotkeys.RIPPLE_DELETE,
     (event) => {
+      if (hyperFramesStudioShortcutScopeActive) return
       if (deleteOwnedByPanel) {
         event.preventDefault()
         event.stopPropagation()
@@ -183,13 +191,21 @@ export function useEditingShortcuts(callbacks: TimelineShortcutCallbacks) {
       }
     },
     HOTKEY_OPTIONS,
-    [deleteOwnedByPanel, selectedItemIds, rippleDeleteItems, clearSelection, callbacks],
+    [
+      deleteOwnedByPanel,
+      selectedItemIds,
+      rippleDeleteItems,
+      clearSelection,
+      callbacks,
+      hyperFramesStudioShortcutScopeActive,
+    ],
   )
 
   // Editing: Ctrl+Backspace - Ripple delete selected items (alternative)
   useHotkeys(
     hotkeys.RIPPLE_DELETE_ALT,
     (event) => {
+      if (hyperFramesStudioShortcutScopeActive) return
       if (deleteOwnedByPanel) {
         event.preventDefault()
         event.stopPropagation()
@@ -205,7 +221,14 @@ export function useEditingShortcuts(callbacks: TimelineShortcutCallbacks) {
       }
     },
     HOTKEY_OPTIONS,
-    [deleteOwnedByPanel, selectedItemIds, rippleDeleteItems, clearSelection, callbacks],
+    [
+      deleteOwnedByPanel,
+      selectedItemIds,
+      rippleDeleteItems,
+      clearSelection,
+      callbacks,
+      hyperFramesStudioShortcutScopeActive,
+    ],
   )
 
   // Editing: Shift+Arrow keys - nudge selected visual items by 1px

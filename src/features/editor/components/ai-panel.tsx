@@ -9,6 +9,7 @@ import {
   type SetStateAction,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import {
   CheckCircle2,
   ChevronDown,
@@ -56,6 +57,14 @@ import {
 } from '@/features/editor/deps/timeline-utils'
 import { usePlaybackStore } from '@/shared/state/playback'
 import { useSelectionStore } from '@/shared/state/selection'
+import { HyperFramesGenerateTab } from '@/features/hyperframes-runtime/components/HyperFramesGenerateTab'
+import { HyperFramesModelStatusButton } from '@/features/hyperframes-runtime/model-center/HyperFramesModelStatusButton'
+import {
+  getHyperFramesModelStatus,
+  openHyperFramesModelCenter,
+} from '@/features/hyperframes-runtime/model-center/modelStatus'
+import { useHyperFramesModelCenterStore } from '@/features/hyperframes-runtime/model-center/modelCenterStore'
+import type { HyperFramesGenerationPlan } from '@/features/hyperframes-runtime/bridges/skills-bridge'
 import type { AudioItem } from '@/types/timeline'
 import type { MediaMetadata } from '@/types/storage'
 import {
@@ -747,9 +756,26 @@ export const AiPanel = memo(function AiPanel() {
   const handleClearAll = () => clearGenerationList(setTtsGenerations)
   const handleRemoveGeneration = (id: string) => removeGenerationFromList(setTtsGenerations, id)
 
+  const handleHyperFramesPlanConfirmed = useCallback((plan: HyperFramesGenerationPlan) => {
+    const status = getHyperFramesModelStatus(useHyperFramesModelCenterStore.getState())
+    if (status.kind !== 'configured' && status.kind !== 'local') {
+      toast.error(status.label, {
+        description: `${status.detail}. Configure a model before running this plan.`,
+      })
+      openHyperFramesModelCenter()
+      return false
+    }
+    toast.success('HyperFrames generation plan confirmed', {
+      description: `${plan.steps.length} steps are ready for the configured executor.`,
+    })
+    return true
+  }, [])
+
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-3">
       <div className="space-y-3">
+        <HyperFramesModelStatusButton />
+        <HyperFramesGenerateTab onPlanConfirmed={handleHyperFramesPlanConfirmed} />
         <Collapsible open={ttsSectionOpen} onOpenChange={setTtsSectionOpen}>
           <div className="-mx-3 -mt-3 bg-secondary/50 px-3 py-2">
             <CollapsibleTrigger asChild>

@@ -535,6 +535,21 @@ export const ClipContent = memo(function ClipContent({
 
   // Composition item - multi-segment filmstrip from visible sub-comp videos, or label fallback
   if (item.type === 'composition') {
+    if (item.sourceKind === 'hyperframes') {
+      return (
+        <div className="absolute inset-0 flex flex-col overflow-hidden">
+          {item.thumbnailUrl && (
+            <img
+              src={item.thumbnailUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover opacity-55"
+              draggable={false}
+            />
+          )}
+          <div className="relative z-10">{renderCompoundClipLabel(item.label || 'HyperFrames')}</div>
+        </div>
+      )
+    }
     if (visualSegments.length > 0) {
       return (
         <div className="absolute inset-0 flex flex-col">

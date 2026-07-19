@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import type { ResolvedTransform } from '@/types/transform'
 import type { MotionModifier } from '@/types/motion'
 import { getProceduralBands, sampleProceduralCurve } from './procedural-preview'

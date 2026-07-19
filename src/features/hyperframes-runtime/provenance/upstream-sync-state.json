@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "packages": {
+    "parsers": {
+      "source": "packages/parsers/src",
+      "target": "src/features/hyperframes-runtime/upstream/parsers",
+      "strategy": "source-copy-with-import-rewrite",
+      "syncedAt": "2026-07-17T17:04:12.684Z",
+      "runtimeOnly": true,
+      "fileCount": 31,
+      "changedFileCount": 31,
+      "bytes": 489936
+    },
+    "lint": {
+      "source": "packages/lint/src",
+      "target": "src/features/hyperframes-runtime/upstream/lint",
+      "strategy": "source-copy-with-import-rewrite",
+      "syncedAt": "2026-07-17T17:13:52.611Z",
+      "runtimeOnly": true,
+      "fileCount": 18,
+      "changedFileCount": 18,
+      "bytes": 304650
+    },
+    "core": {
+      "source": "packages/core/src",
+      "target": "src/features/hyperframes-runtime/upstream/core",
+      "strategy": "source-subset-with-import-rewrite",
+      "syncedAt": "2026-07-17T17:50:50.241Z",
+      "runtimeOnly": true,
+      "includePaths": [
+        "compositionContract.ts",
+        "slideshow/index.ts"
+      ],
+      "fileCount": 2,
+      "changedFileCount": 2,
+      "bytes": 185
+    },
+    "player": {
+      "source": "packages/player/src",
+      "target": "src/features/hyperframes-runtime/upstream/player",
+      "strategy": "source-copy-with-import-rewrite",
+      "syncedAt": "2026-07-17T17:50:50.213Z",
+      "runtimeOnly": true,
+      "includePaths": [],
+      "fileCount": 22,
+      "changedFileCount": 22,
+      "bytes": 202189
+    },
+    "studio": {
+      "source": "packages/studio/src",
+      "target": "src/features/hyperframes-runtime/upstream/studio",
+      "strategy": "source-subset-with-import-rewrite",
+      "syncedAt": "2026-07-17T18:43:03.503Z",
+      "runtimeOnly": true,
+      "includePaths": [
+        "components/editor/FileTree.tsx",
+        "components/editor/FileTreeNodes.tsx",
+        "components/editor/FileTreeIcons.tsx",
+        "components/editor/SourceEditor.tsx",
+        "components/nle/NLEPreview.tsx",
+        "components/nle/CompositionBreadcrumb.tsx",
+        "components/nle/previewZoom.ts",
+        "utils/sourcePatcher.ts",
+        "utils/htmlEditor.ts",
+        "utils/studioUiPreferences.ts"
+      ],
+      "fileCount": 10,
+      "changedFileCount": 10,
+      "bytes": 87534
+    },
+    "studio-server": {
+      "source": "packages/studio-server/src",
+      "target": "src/features/hyperframes-runtime/upstream/studio-server",
+      "strategy": "source-subset-with-import-rewrite",
+      "syncedAt": "2026-07-17T19:23:28.186Z",
+      "runtimeOnly": true,
+      "includePaths": [
+        "helpers/safePath.ts",
+        "helpers/sourceMutation.ts",
+        "helpers/sourceStyleMutation.ts",
+        "helpers/finiteMutation.ts",
+        "helpers/backupJournal.ts",
+        "helpers/previewAdapter.ts",
+        "helpers/draftMarkers.ts",
+        "helpers/screenshotClip.ts",
+        "helpers/waveform.ts"
+      ],
+      "fileCount": 9,
+      "changedFileCount": 9,
+      "bytes": 39387
+    },
+    "skills": {
+      "source": "skills",
+      "target": "src/features/hyperframes-runtime/upstream/skills",
+      "strategy": "source-resource-copy",
+      "syncedAt": "2026-07-17T20:50:05.536Z",
+      "runtimeOnly": false,
+      "includePaths": [],
+      "fileCount": 841,
+      "changedFileCount": 841,
+      "bytes": 16101289
+    },
+    "producer-node": {
+      "source": "packages/producer/src",
+      "target": "src/features/hyperframes-runtime/upstream/producer-node",
+      "strategy": "source-subset-with-import-rewrite",
+      "syncedAt": "2026-07-18T03:50:30.773Z",
+      "runtimeOnly": true,
+      "includePaths": [],
+      "fileCount": 88,
+      "changedFileCount": 88,
+      "bytes": 2053096
+    }
+  },
+  "updatedAt": "2026-07-18T03:50:30.773Z"
+}

@@ -12,6 +12,7 @@ import { RollingEditOverlay } from './rolling-edit-overlay'
 import { RippleEditOverlay } from './ripple-edit-overlay'
 import { SlipEditOverlay } from './slip-edit-overlay'
 import { SlideEditOverlay } from './slide-edit-overlay'
+import { HyperFramesPreviewOverlay } from './hyperframes-preview-overlay'
 import { useGpuEffectsOverlay } from '../hooks/use-gpu-effects-overlay'
 import {
   usePreviewCompositionBaseModel,
@@ -646,6 +647,12 @@ const VideoPreviewBase = memo(function VideoPreviewBase({
       />
     </>
   ) : null
+  const hyperFramesOverlay = (
+    <HyperFramesPreviewOverlay
+      items={items}
+      fps={fps}
+    />
+  )
   const shouldShowAfterDuringSplitPlayback = isPlaying && colorGradeComparisonMode === 'split'
   const stageColorGradeComparisonMode = shouldShowAfterDuringSplitPlayback
     ? 'off'
@@ -765,6 +772,7 @@ const VideoPreviewBase = memo(function VideoPreviewBase({
       colorGradeSplitPosition={colorGradeSplitPosition}
       onColorGradeSplitPositionChange={setColorGradeSplitPosition}
       inputProps={inputProps}
+      timelineHasItems={items.length > 0}
       onBackgroundClick={handleBackgroundClick}
       onFrameChange={handleStageFrameChange}
       onPlayStateChange={handlePlayStateChange}
@@ -772,6 +780,7 @@ const VideoPreviewBase = memo(function VideoPreviewBase({
       perfPanel={perfPanel}
       comparisonOverlay={comparisonOverlay}
       overlayControls={overlayControls}
+      hyperFramesOverlay={hyperFramesOverlay}
     />
   )
 })

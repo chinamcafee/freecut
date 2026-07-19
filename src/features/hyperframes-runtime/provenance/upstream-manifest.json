@@ -1,0 +1,117 @@
+{
+  "schemaVersion": 1,
+  "snapshotAt": "2026-07-18",
+  "hyperframesRoot": "/Users/changzechuan/VideoAIEditProjects/hyperframes",
+  "targetRoot": "src/features/hyperframes-runtime",
+  "noRuntimeNpmDependency": true,
+  "packages": {
+    "core": {
+      "id": "core",
+      "displayName": "HyperFrames core runtime and compiler",
+      "source": "packages/core/src",
+      "target": "src/features/hyperframes-runtime/upstream/core",
+      "environment": "browser-and-local-service",
+      "strategy": "source-subset-with-import-rewrite",
+      "notes": [
+        "Migrate runtime and compiler subsets required by preview, Studio, lint and Producer parity.",
+        "Keep Node-only helpers behind local-service adapters."
+      ]
+    },
+    "parsers": {
+      "id": "parsers",
+      "displayName": "HyperFrames parsers",
+      "source": "packages/parsers/src",
+      "target": "src/features/hyperframes-runtime/upstream/parsers",
+      "environment": "browser-and-local-service",
+      "strategy": "source-copy-with-import-rewrite",
+      "notes": [
+        "Used for HTML, GSAP, asset and hfId parsing.",
+        "Parser failures must be converted to FreeCut diagnostics."
+      ]
+    },
+    "lint": {
+      "id": "lint",
+      "displayName": "HyperFrames lint",
+      "source": "packages/lint/src",
+      "target": "src/features/hyperframes-runtime/upstream/lint",
+      "environment": "browser-and-local-service",
+      "strategy": "source-copy-with-import-rewrite",
+      "notes": [
+        "Used by import, Studio save, preview and export gates.",
+        "Rule results map to FreeCut blocking, warning and suggestion severities."
+      ]
+    },
+    "player": {
+      "id": "player",
+      "displayName": "HyperFrames player",
+      "source": "packages/player/src",
+      "target": "src/features/hyperframes-runtime/upstream/player",
+      "environment": "browser",
+      "strategy": "source-copy-with-import-rewrite",
+      "notes": [
+        "Web Component and iframe player source.",
+        "FreeCut business code must use bridges/player-bridge instead of the upstream element directly."
+      ]
+    },
+    "studio": {
+      "id": "studio",
+      "displayName": "HyperFrames Studio",
+      "source": "packages/studio/src",
+      "target": "src/features/hyperframes-runtime/upstream/studio",
+      "environment": "browser",
+      "strategy": "source-subset-with-import-rewrite",
+      "notes": [
+        "Migrate Studio as embeddable components, not as a standalone app shell.",
+        "FreeCut owns layout, state synchronization, shortcuts, file writes and theme isolation."
+      ]
+    },
+    "studio-server": {
+      "id": "studio-server",
+      "displayName": "HyperFrames Studio Server",
+      "source": "packages/studio-server/src",
+      "target": "src/features/hyperframes-runtime/upstream/studio-server",
+      "environment": "local-service",
+      "strategy": "source-subset-with-import-rewrite",
+      "notes": [
+        "Route handlers and helpers provide file, preview, lint, thumbnail, waveform, selection and render API references.",
+        "All file access must be mediated by FreeCut project adapters."
+      ]
+    },
+    "producer-node": {
+      "id": "producer-node",
+      "displayName": "HyperFrames Producer Node runtime",
+      "source": "packages/producer/src",
+      "target": "src/features/hyperframes-runtime/upstream/producer-node",
+      "environment": "local-service",
+      "strategy": "source-subset-with-import-rewrite",
+      "notes": [
+        "Node-only Chrome, FFmpeg, audio mixing, transparent output and render orchestration code.",
+        "Must never be imported by the browser bundle."
+      ]
+    },
+    "cli-tools": {
+      "id": "cli-tools",
+      "displayName": "HyperFrames CLI service utilities",
+      "source": "packages/cli/src",
+      "target": "src/features/hyperframes-runtime/upstream/cli-tools",
+      "environment": "local-service",
+      "strategy": "source-subset-with-import-rewrite",
+      "notes": [
+        "Migrate reusable services from doctor, skills, registry, browser preflight, capture, transcribe and tts commands.",
+        "Do not migrate command-line UI as product UI."
+      ]
+    },
+    "skills": {
+      "id": "skills",
+      "displayName": "HyperFrames skills",
+      "source": "skills",
+      "target": "src/features/hyperframes-runtime/upstream/skills",
+      "environment": "task-sandbox",
+      "strategy": "source-resource-copy",
+      "notes": [
+        "Migrate SKILL.md, CATALOG.md, references, examples, themes and script resources.",
+        "Scripts require explicit execution environment and tool permission declarations before use."
+      ]
+    }
+  }
+}

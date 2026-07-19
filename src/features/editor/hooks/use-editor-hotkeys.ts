@@ -24,31 +24,36 @@ interface EditorHotkeyCallbacks {
  */
 export function useEditorHotkeys(callbacks: EditorHotkeyCallbacks = {}) {
   const hotkeys = useResolvedHotkeys()
+  const hyperFramesStudioShortcutScopeActive = useEditorStore(
+    (state) => state.hyperFramesStudioShortcutScopeActive,
+  )
 
   // Save: Cmd/Ctrl+S
   useHotkeys(
     hotkeys.SAVE,
     (event) => {
+      if (hyperFramesStudioShortcutScopeActive) return
       event.preventDefault()
       if (callbacks.onSave) {
         callbacks.onSave()
       }
     },
     HOTKEY_OPTIONS,
-    [callbacks.onSave],
+    [callbacks.onSave, hyperFramesStudioShortcutScopeActive],
   )
 
   // Export: Cmd/Ctrl+Shift+E
   useHotkeys(
     hotkeys.EXPORT,
     (event) => {
+      if (hyperFramesStudioShortcutScopeActive) return
       event.preventDefault()
       if (callbacks.onExport) {
         callbacks.onExport()
       }
     },
     { ...HOTKEY_OPTIONS, eventListenerOptions: { capture: true } },
-    [callbacks.onExport],
+    [callbacks.onExport, hyperFramesStudioShortcutScopeActive],
   )
 
   // Open Scene Browser: Cmd/Ctrl+Shift+F — capture phase because the

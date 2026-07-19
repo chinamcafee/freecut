@@ -44,6 +44,26 @@ function isStorageProtectedPath(pathname: string): boolean {
 }
 
 const logger = createLogger('WorkspaceGate')
+const DEV_OPFS_WORKSPACE_PARAM = '__freecut_test_workspace'
+const DEV_OPFS_WORKSPACE_SESSION_KEY = 'freecut:dev-opfs-workspace'
+const DEV_OPFS_WORKSPACE_DIR = 'hyperframes-ui-qa'
+
+function shouldUseDevOpfsWorkspace(): boolean {
+  if (!import.meta.env.DEV) return false
+
+  const requested = new URLSearchParams(window.location.search).get(DEV_OPFS_WORKSPACE_PARAM)
+  if (requested === 'opfs') {
+    window.sessionStorage.setItem(DEV_OPFS_WORKSPACE_SESSION_KEY, 'opfs')
+    return true
+  }
+
+  return window.sessionStorage.getItem(DEV_OPFS_WORKSPACE_SESSION_KEY) === 'opfs'
+}
+
+async function getDevOpfsWorkspace(): Promise<FileSystemDirectoryHandle> {
+  const root = await navigator.storage.getDirectory()
+  return root.getDirectoryHandle(DEV_OPFS_WORKSPACE_DIR, { create: true })
+}
 
 type GateStatus =
   | { kind: 'initializing' }
@@ -83,6 +103,11 @@ export function WorkspaceGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false
     ;(async () => {
+      if (shouldUseDevOpfsWorkspace()) {
+        const handle = await getDevOpfsWorkspace()
+        if (!cancelled) await activate(handle)
+        return
+      }
       if (!isFileSystemAccessSupported()) {
         if (!cancelled) setStatus({ kind: 'unavailable' })
         return

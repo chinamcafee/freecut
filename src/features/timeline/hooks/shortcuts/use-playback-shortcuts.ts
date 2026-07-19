@@ -15,6 +15,7 @@ import { useSourcePlayerStore } from '@/shared/state/source-player'
 import { getFilteredItemSnapEdges } from '../../utils/timeline-snap-utils'
 import { getVisibleTrackIds } from '../../utils/group-utils'
 import { useResolvedHotkeys } from '@/features/timeline/deps/settings'
+import { useEditorStore } from '@/shared/state/editor'
 
 /** Compute snap points on-demand from current store state (avoids reactive subscriptions). */
 function getSnapPoints(): number[] {
@@ -41,6 +42,9 @@ export function usePlaybackShortcuts(callbacks: TimelineShortcutCallbacks) {
   const setPreviewFrame = usePlaybackStore((s) => s.setPreviewFrame)
   const setDisplayedFrame = usePreviewBridgeStore((s) => s.setDisplayedFrame)
   const isPlaying = usePlaybackStore((s) => s.isPlaying)
+  const hyperFramesStudioShortcutScopeActive = useEditorStore(
+    (s) => s.hyperFramesStudioShortcutScopeActive,
+  )
   const commitTimelineSeek = useCallback(
     (frame: number) => {
       setPreviewFrame(null)
@@ -54,6 +58,7 @@ export function usePlaybackShortcuts(callbacks: TimelineShortcutCallbacks) {
   useHotkeys(
     hotkeys.PLAY_PAUSE,
     (event) => {
+      if (hyperFramesStudioShortcutScopeActive) return
       event.preventDefault()
       const { hoveredPanel, playerMethods } = useSourcePlayerStore.getState()
       if (hoveredPanel === 'source' && playerMethods) {
@@ -68,7 +73,7 @@ export function usePlaybackShortcuts(callbacks: TimelineShortcutCallbacks) {
       }
     },
     { ...HOTKEY_OPTIONS, eventListenerOptions: { capture: true } },
-    [togglePlayPause, isPlaying, callbacks],
+    [togglePlayPause, isPlaying, callbacks, hyperFramesStudioShortcutScopeActive],
   )
 
   // Navigation: Arrow Left - Previous frame

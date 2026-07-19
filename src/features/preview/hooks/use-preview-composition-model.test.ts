@@ -178,4 +178,62 @@ describe('buildPreviewCompositionData', () => {
     expect(result.inputProps.tracks[0]?.audioEq).toEqual(track.audioEq)
     expect(result.fastScrubInputProps.tracks[0]?.audioEq).toEqual(track.audioEq)
   })
+
+  it('leaves source-linked HyperFrames compositions to the Player overlay', () => {
+    const track: TimelineTrack = {
+      id: 'track-1',
+      name: 'Video',
+      height: 80,
+      locked: false,
+      visible: true,
+      muted: false,
+      solo: false,
+      order: 1,
+      items: [
+        {
+          id: 'hf-clip',
+          trackId: 'track-1',
+          type: 'composition',
+          compositionId: 'hf-project',
+          sourceKind: 'hyperframes',
+          hyperframesProjectId: 'hf-project',
+          activeCompositionPath: 'compositions/main.html',
+          compositionWidth: 1920,
+          compositionHeight: 1080,
+          label: 'HyperFrames clip',
+          from: 0,
+          durationInFrames: 180,
+        },
+      ],
+    }
+
+    const result = buildPreviewCompositionData({
+      combinedTracks: [track],
+      fps: 30,
+      items: track.items,
+      keyframes: [{ itemId: 'hf-clip', properties: [] }],
+      transitions: [
+        {
+          id: 'hf-transition',
+          type: 'crossfade',
+          presentation: 'crossfade',
+          timing: 'linear',
+          leftClipId: 'hf-clip',
+          rightClipId: 'native-clip',
+          trackId: 'track-1',
+          durationInFrames: 12,
+        },
+      ],
+      resolvedUrls: new Map(),
+      useProxy: false,
+      blobUrlVersion: 0,
+      project: { width: 1920, height: 1080 },
+    })
+
+    expect(result.inputProps.tracks[0]?.items).toEqual([])
+    expect(result.fastScrubInputProps.tracks[0]?.items).toEqual([])
+    expect(result.inputProps.keyframes).toEqual([])
+    expect(result.inputProps.transitions).toEqual([])
+    expect(result.totalFrames).toBe(330)
+  })
 })

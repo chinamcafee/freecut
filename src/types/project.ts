@@ -5,6 +5,7 @@ import type { CropSettings } from './transform'
 import type { TextStylePresetId } from '@/shared/typography/text-style-preset-ids'
 import type { TextLayoutDrafts, TextSpan, TextStyleFields } from './text'
 import type { TextMotionSpec } from './text-motion'
+import type { HyperFramesIntegrationState, HyperFramesTimelineSourceKind } from './hyperframes'
 
 export interface Project {
   id: string
@@ -33,6 +34,12 @@ export interface Project {
    * Updated when rootFolderHandle is set.
    */
   rootFolderName?: string
+  /**
+   * HyperFrames source-linked project directory state.
+   * Stored on the FreeCut project so generated HTML video projects remain
+   * traceable, editable, renderable and recoverable.
+   */
+  hyperframes?: HyperFramesIntegrationState
 }
 
 export interface ProjectTimeline {
@@ -119,6 +126,11 @@ export interface ProjectTimeline {
       speed?: number // Playback speed multiplier (default 1.0)
       // Composition item fields
       compositionId?: string // Reference to a sub-composition
+      sourceKind?: HyperFramesTimelineSourceKind
+      hyperframesProjectId?: string
+      activeCompositionPath?: string
+      hyperframesManifestPath?: string
+      hyperframesVisualState?: import('./hyperframes').HyperFramesTimelineVisualState
       compositionWidth?: number
       compositionHeight?: number
       // Source dimensions (for video/image items)
